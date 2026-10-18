@@ -2,7 +2,7 @@
 
 Code samples each case with known ground truth (kind of restricted data, channel, facts, identifier values);
 a local LLM writes the payload in that channel's format plus a safe twin; two blind verifiers must confirm the
-realisation; `build` turns accepted cases into basal-format decision items under several data policies and
+realisation; `build` turns accepted cases into typed-decision items under several data policies and
 destinations, so the same payload gets different actions depending on where it is going.
 
     python -m pretrain.harness.pii_gen generate --hours 7.5      # resumable; appends to raw_cases.jsonl

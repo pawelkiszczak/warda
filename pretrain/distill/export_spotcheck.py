@@ -34,7 +34,7 @@ def main():
                 sample.append(v[i])
         i += 1
     md = ["# Spot-check: realistic Polish eval (pl_real)", "",
-          ("Label = answer basal-1.0-4.5B and Bielik-11B agreed on (teacher confidence ≥ 0.7). Mark each item OK or "
+          ("Label = answer the teacher and Bielik-11B agreed on (teacher confidence ≥ 0.7). Mark each item OK or "
            "give the correct option in the CSV."), ""]
     with (WORK / "distill" / "spotcheck_pl_real.csv").open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)

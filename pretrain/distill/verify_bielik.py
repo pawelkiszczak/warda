@@ -56,7 +56,7 @@ def main():
     from mlx_lm import load
     import sys
     sys.path.insert(0, str(ROOT))
-    from basal import prompt as prompt_module
+    from pretrain import prompt as prompt_module
 
     start = time.perf_counter()
     model, mlx_tokenizer = load(args.model)

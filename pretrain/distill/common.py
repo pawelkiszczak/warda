@@ -10,7 +10,6 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 WORK = ROOT / "pretrain" / "work" / "distill"
-TEACHER = "basal-1.0-4.5B"
 LICENSES = {
     "fineweb-2": "ODC-By-1.0", "plwiki": "CC-BY-SA 3.0",
     "wolne_lektury_corpus": "CC BY-SA 4.0 or Free Art License",

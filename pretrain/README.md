@@ -1,16 +1,17 @@
-# basal-scratch: a GPT-2-sized MoE decision model trained from scratch on a Mac
+# warda-scratch: a GPT-2-sized MoE decision model trained from scratch on a Mac
 
 End-to-end experiment: curate Polish (+English) pretraining data from SpeakLeash and Hugging Face following the Bielik
-reports, pretrain a 126M-parameter MoE (37M active) for 1B tokens with MLX on an M4 Max, fine-tune it into a basal-style
-typed-decision model, calibrate it and evaluate it with the basal protocol. Environment: `uv venv --python 3.12
-pretrain/.venv && uv pip install --python pretrain/.venv/bin/python -r pretrain/requirements.txt`. Data and runs live in
-`pretrain/work/` (gitignored).
+reports, pretrain a 126M-parameter MoE (37M active) for 1B tokens with MLX on an M4 Max, fine-tune it into a
+typed-decision model, calibrate it and evaluate it. Environment: Python **3.12** — required, because pyarrow publishes
+no wheels past 3.13 — via `uv venv --python 3.12 pretrain/.venv && uv pip install --python pretrain/.venv/bin/python -r
+pretrain/requirements.txt` (every package is pinned to the versions installed and tested together on 3.12). Data and
+runs live in `pretrain/work/` (gitignored).
 
 ## Pretraining data
 
 `data/build_tokens.py` downloads resumable SpeakLeash JSONL.zst prefixes in parallel with HTTP Range and the selected Hugging Face parquet train shards, then filters, classifies, deduplicates, and tokenizes with APT4. Cleaned SpeakLeash docs are cached per source; curation and tokenization are streamed in bounded batches through a 12-worker process pool into a SQLite spool to avoid retaining the corpus in RAM. Run progress is persisted at `work/data_pipeline.log`; token-bin hashes and source licenses are written to `work/tokens/manifest.json`.
 
-Curation uses NFC normalization, replacement-character ratio ≤0.001, email/phone/URL anonymization, ≥200 alphanumeric characters, and loop/duplicate-line rejection. Documents sharing any normalized word 13-gram with KLEJ test data or `basal/examples/*.jsonl` states are removed. SpeakLeash HIGH passes directly; other Polish docs require P(HIGH)>0.50 (the permitted relaxation from >0.90; it did not materially increase selected volume). The XGBoost classifier uses Bielik v3 hyperparameters (250 estimators, depth 8, learning rate .08, subsample .75, colsample .8, alpha .2, lambda .5); evaluation: accuracy 0.8133, macro-F1 0.8136, HIGH-F1 0.7845. Exact SHA-256 and 128-permutation MinHash word 13-gram LSH at Jaccard .8 are used. Per-source train/val selection is seeded-random (42) within caps, not ranked by P(HIGH); val is held out by document.
+Curation uses NFC normalization, replacement-character ratio ≤0.001, email/phone/URL anonymization, ≥200 alphanumeric characters, and loop/duplicate-line rejection. Documents sharing any normalized word 13-gram with KLEJ test data are removed. SpeakLeash HIGH passes directly; other Polish docs require P(HIGH)>0.50 (the permitted relaxation from >0.90; it did not materially increase selected volume). The XGBoost classifier uses Bielik v3 hyperparameters (250 estimators, depth 8, learning rate .08, subsample .75, colsample .8, alpha .2, lambda .5); evaluation: accuracy 0.8133, macro-F1 0.8136, HIGH-F1 0.7845. Exact SHA-256 and 128-permutation MinHash word 13-gram LSH at Jaccard .8 are used. Per-source train/val selection is seeded-random (42) within caps, not ranked by P(HIGH); val is held out by document.
 
 Data source licenses as reported by the source manifests:
 
@@ -79,7 +80,7 @@ pretrain/.venv/bin/python pretrain/data/build_tokens.py
 pretrain/.venv/bin/python pretrain/sft/generate.py
 ```
 
-Generation is seeded and rerunnable. It produces five code-labeled Polish-first families (deadlines, VAT/discounts/instalments, threshold rules, ticket routing, urgency scores), plus sufficiency pairs in every split and gold-flipping deadline, amount, and threshold counterfactuals whose paired rows share `case_id` and split. Each family has eight narrative templates: templates 0–4 train, 5 dev, 6 calibration, 7 test. Entity pools are disjoint by split. Polish states use named entities in labelled fields and natural-language dates; ISO dates are used only in the held-out template. English is sampled on every eighth base case (10.8% of retained rows overall). Instruction injections measured 15.9% of code-labeled rows.
+Generation is seeded and rerunnable. It produces five code-labeled Polish-first families (deadlines, VAT/discounts/instalments, threshold rules, ticket routing, urgency scores), plus sufficiency pairs in every split and gold-flipping deadline, amount, and threshold counterfactuals whose paired rows share `case_id` and split. Each family has eight narrative templates: templates 0–4 train, 5 dev, 6 calibration, 7 test. Entity pools are disjoint by split. Polish states use named entities in labelled fields and natural-language dates; ISO dates are used only in the held-out template. English is sampled on every eighth base case (10.8% of retained rows overall). English amount and urgency states are rebuilt from the generator's exact values rather than re-parsed from the Polish text, so the stated numbers always match the gold label (`sft/tests/test_englishize.py` locks this in; a value that cannot be determined raises instead of defaulting). Instruction injections measured 15.9% of code-labeled rows.
 
 Deadline arithmetic shifts weekend and Polish public-holiday endpoints (including Easter Monday and Corpus Christi) to the next business day. Amount labels use decimal rounding, nonzero discounts, and same-width plausible options; threshold comparisons cover inclusive and strict boundaries, routing labels are assigned by construction, and urgency scores follow the explicit thresholds in each state. Option arrays remain canonical (score levels low-to-high; noul options `tak, nie` / `yes, no`); downstream training performs option randomization.
 
@@ -113,14 +114,20 @@ Mean per-source validation loss went 5.23 (step 200) → 2.96 (end); FineWeb-2 P
 ## Decision fine-tuning and evaluation
 
 `sft.py` fine-tunes the pretrained model on `work/sft/`, fits per-type temperatures and 1%/5% error thresholds on `cal`,
-and scores `test` and the 44 bundled `basal/examples` once. It uses the basal prompt (`basal/prompt.py`) and averages
-the original and reversed option order. Routers stay frozen.
+and scores `test` once. It renders prompts with `prompt.py` and averages the original and reversed option order.
+Routers stay frozen.
+
+Prompt format (`prompt.py`): Warda's own template — a fixed system prompt, then one user turn holding the state, the
+question and `A.`–`J.` lettered options, with the assistant reply prefilled to `{"answer": "` so the decision is the
+next token. Polish and English templates exist; every other language renders with the English one. The template matches
+no external model's format, no released weights depend on it, and old local checkpoints trained with earlier
+experimental templates are not compatible with it.
 
 ```bash
 pretrain/.venv/bin/python pretrain/sft.py --base s126m-1b --name s126m-1b-sft --epochs 6
 ```
 
-Readout: basal-1.0's letter readout (`--readout letter`) did not train at this scale. Train loss stayed at the
+Readout: the letter readout (`--readout letter`) did not train at this scale. Train loss stayed at the
 uniform level (≈1.2) for two epochs and dev predictions were one fixed letter (flip rate ≈1.0), so the model never bound
 letters to options. The default `--readout pointer` scores each option's last-token hidden state against the
 answer-slot state with a small bilinear head (same prompt, one forward pass per order) and learns immediately.
@@ -128,11 +135,11 @@ answer-slot state with a small bilinear head (same prompt, one forward pass per 
 Results (`work/runs/*/eval.json`; checkpoint chosen by dev NLL; test is template-disjoint and the public sets use their
 own test splits):
 
-| pretraining before SFT | test acc (chance 0.348) | NLL | ECE (calibrated) | flip rate | coverage @1% target (observed error) | basal examples (44, chance 0.361) |
-|---|---:|---:|---:|---:|---:|---:|
-| none (random init) | 0.452 | 1.334 | 0.148 | 0.20 | 10.5% (22.5%) | 0.386 |
-| 262M tokens (step 1000) | 0.537 | 0.905 | 0.060 | 0.17 | 20.1% (1.7%) | 0.250 |
-| **1B tokens (final)** | **0.567** | **0.852** | **0.042** | 0.24 | **23.8% (0.5%)** | 0.318 |
+| pretraining before SFT | test acc (chance 0.348) | NLL | ECE (calibrated) | flip rate | coverage @1% target (observed error) |
+|---|---:|---:|---:|---:|---:|
+| none (random init) | 0.452 | 1.334 | 0.148 | 0.20 | 10.5% (22.5%) |
+| 262M tokens (step 1000) | 0.537 | 0.905 | 0.060 | 0.17 | 20.1% (1.7%) |
+| **1B tokens (final)** | **0.567** | **0.852** | **0.042** | 0.24 | **23.8% (0.5%)** |
 
 Final model by family (test accuracy / chance): routing 0.995/0.25, urgency 0.950/0.33, sufficiency 0.844/0.50,
 PolEmo 0.760/0.25, CBD 0.670/0.50, DYK 0.620/0.50, Allegro reviews 0.510/0.20, deadlines 0.417/0.31,
@@ -141,11 +148,10 @@ Temperatures: choice 0.82, noul 1.58, score 1.08. Batched-vs-single parity (fp32
 
 Reading the results: pretraining helps at every level measured (accuracy, calibration, and whether thresholds hold on
 test). The model learns the rule-in-state and text-classification families. It does not learn date arithmetic,
-VAT/discount amounts or numeric threshold comparison, which stay at chance. It does not transfer to the hand-written
-bundled basal examples, which stay at chance. Routing and urgency are near-perfect partly because their generators
-reuse a small set of messages and rules, so treat those two numbers as template fit rather than skill. The dev-NLL
-selection picked epoch 3 of 6 on raw dev NLL; dev accuracy kept rising to 0.609 at epoch 5 while uncalibrated NLL
-worsened. `sft.py` now selects on dev NLL after a per-type temperature fitted on dev.
+VAT/discount amounts or numeric threshold comparison, which stay at chance. Routing and urgency are near-perfect partly
+because their generators reuse a small set of messages and rules, so treat those two numbers as template fit rather
+than skill. The dev-NLL selection picked epoch 3 of 6 on raw dev NLL; dev accuracy kept rising to 0.609 at epoch 5
+while uncalibrated NLL worsened. `sft.py` now selects on dev NLL after a per-type temperature fitted on dev.
 
 Further `sft.py` options: items may carry a soft `target` distribution (e.g. annotator vote shares), which is used as
 the training target instead of one-hot `gold`; `--base` may also be a fine-tuned run, so stages chain and the pointer
@@ -156,7 +162,7 @@ head carries over; `--extra-eval NAME=PATH` (repeatable) scores additional held-
 
 Tracking is local MLflow; no account or network is needed. `track.py <run> [--follow]` (or `--all`) mirrors a run
 directory's `config.json` (params), `metrics.jsonl` / `sft.jsonl` (curves, greedy samples as text artifacts) and
-`eval.json` / `calibration.json` (final metrics + artifacts) into `work/mlflow.db`, experiment `basal-scratch`. It
+`eval.json` / `calibration.json` (final metrics + artifacts) into `work/mlflow.db`, experiment `warda-scratch`. It
 resumes using `<run>/mlflow.json`. Browse and compare runs with:
 
 ```bash
@@ -208,17 +214,16 @@ from TypeSafe Jev 1.13 through OpenRouter.
 readout and LR 3e-4, and are scored on the Polish test plus four external sets
 (`--extra-eval .../ext/{openjev_test,openjev_ood,kaivoss_test,tasksource_test}.jsonl`). Accuracy, chance in brackets:
 
-| run | data | Polish test (0.348) | basal examples (0.361, n=44) | Open-Jev test (0.373) | Open-Jev OOD (0.393) | tasksource (0.369) | kaivoss (0.348) |
-|---|---|---:|---:|---:|---:|---:|---:|
-| `s126m-1b-sft` | Polish only, 6 ep | **0.567** | 0.318 | 0.243 | 0.223 | 0.368 | 0.393 |
-| `jev-probe` | 100k stage-1 rows, 1 ep | 0.313 | 0.409 | 0.567 | 0.609 | 0.414 | 0.395 |
-| `jev-stage1` | 368k stage-1 rows, 1 ep | 0.396 | 0.409 | 0.627 | 0.654 | 0.432 | 0.442 |
-| `jev-stage2` | stage 1 → Polish + 30% replay, 3 ep (epoch 1 selected) | 0.485 | 0.409 | 0.595 | 0.644 | 0.426 | 0.427 |
-| `jev-joint` | stage-1 rows + Polish ×3, 1 ep | 0.544 | 0.250 | **0.628** | **0.659** | **0.443** | **0.444** |
+| run | data | Polish test (0.348) | Open-Jev test (0.373) | Open-Jev OOD (0.393) | tasksource (0.369) | kaivoss (0.348) |
+|---|---|---:|---:|---:|---:|---:|
+| `s126m-1b-sft` | Polish only, 6 ep | **0.567** | 0.243 | 0.223 | 0.368 | 0.393 |
+| `jev-probe` | 100k stage-1 rows, 1 ep | 0.313 | 0.567 | 0.609 | 0.414 | 0.395 |
+| `jev-stage1` | 368k stage-1 rows, 1 ep | 0.396 | 0.627 | 0.654 | 0.432 | 0.442 |
+| `jev-stage2` | stage 1 → Polish + 30% replay, 3 ep (epoch 1 selected) | 0.485 | 0.595 | 0.644 | 0.426 | 0.427 |
+| `jev-joint` | stage-1 rows + Polish ×3, 1 ep | 0.544 | **0.628** | **0.659** | **0.443** | **0.444** |
 
 Wall time on the M4 Max: stage 1 2.0 h, stage 2 0.4 h, joint 2.4 h (58–80 items/s). One joint run beats
-stage 1 → stage 2 on every set except the 44 basal examples. Those swing between 0.25 and 0.41 across runs, which is
-within their ±0.15 interval, so they cannot rank runs. In stage 2, Polish dev accuracy fell after its first epoch
+stage 1 → stage 2 on every scored set. In stage 2, Polish dev accuracy fell after its first epoch
 (0.515 → 0.499), which suggests the continued 3e-4 learning rate overwrote stage 1. Joint keeps Polish within 2.3
 points of the Polish-only model (routing 1.00, urgency 0.96, PolEmo 0.76) and covers 10.5% of Polish test decisions at
 0.6% observed error. Per-type temperatures fitted on the Polish calibration set are ≈2 (the model is overconfident);
@@ -232,76 +237,69 @@ per-document source tags, so rows use `pretrain_train_mixed` with mixed-license 
 A Polish-language heuristic (at least two Polish diacritics or three Polish function words) filters both documents and candidate passages.
 Each passage is a contiguous 400–1,500 character sentence/paragraph slice, identified by a normalized-text SHA-256;
 validation document hashes are excluded from training. Questions come from 26 Polish families, each with three
-paraphrases and content/source applicability rules; prompts are checked with `basal.prompt.render` and limited to 1,536
+paraphrases and content/source applicability rules; prompts are checked with `prompt.py`'s `render` and limited to 1,536
 tokens. The defaults produce 60,000 train and 2,500 eval items. Pool generation is CPU-only; `--limit N` makes each pool at most N rows.
 
-Start the separate teacher server environment and serve basal-1.0-4.5B on port 8077:
+The pools are unlabelled question rows over real Polish passages; any labelling process (teacher model or human) that
+writes a `target` probability vector per row can consume them. The teacher-labelling client used for the historical
+runs below spoke an external serving API and has been removed with that dependency. What remains is the generic
+tooling around labelled pools:
 
 ```bash
-uv venv --python 3.12 .venv-basal
-uv pip install --python .venv-basal/bin/python -e ".[mlx]"
-.venv-basal/bin/basal-serve --model Remek/basal-1.0-4.5B --mode mlx --port 8077
+pretrain/.venv/bin/python pretrain/distill/build_pool.py        # build unlabelled pools from the token bins
+pretrain/.venv/bin/python pretrain/distill/verify_bielik.py     # independent Bielik-11B scoring of labelled eval rows
+pretrain/.venv/bin/python pretrain/distill/make_eval.py         # keep teacher/verifier argmax agreements
 ```
 
-Build both pools, label the training/evaluation pool, independently score evaluation items with Bielik 11B, and retain
-the agreed high-confidence evaluation items:
-
-```bash
-pretrain/.venv/bin/python pretrain/distill/build_pool.py
-pretrain/.venv/bin/python pretrain/distill/label_teacher.py --split train
-pretrain/.venv/bin/python pretrain/distill/label_teacher.py --split eval
-pretrain/.venv/bin/python pretrain/distill/verify_bielik.py
-pretrain/.venv/bin/python pretrain/distill/make_eval.py
-```
-
-Teacher labelling batches a passage's questions into one `/v1/systemone` call, writes calibrated probabilities in
-canonical option order, and resumes by item ID. The verifier uses `basal.prompt.render` and letter readout probabilities
-averaged across both option orders. The final `work/sft_jev/ext/pl_real.jsonl` keeps teacher/verifier argmax agreements
-where the teacher's maximum probability is at least 0.7, with a per-family cap of 10%. Progress and measured rates are
-logged under `work/distill/*.log`; all generated data stays under gitignored `work/`.
+`verify_bielik.py` renders each item with `prompt.py` and averages letter-readout probabilities across both option
+orders. `make_eval.py` keeps rows where the teacher and verifier argmaxes agree and the teacher's maximum probability
+is at least 0.7, with a per-family cap of 10% (`--teacher-only` skips the verifier). `family_gaps.py` scores a labelled
+pool with a fine-tuned run and writes per-family sampling weights for a weighted `build_pool.py --family-weights` round;
+`export_spotcheck.py` writes a stratified 100-item human-review sample. Progress and measured rates are logged under
+`work/distill/*.log`; all generated data stays under gitignored `work/`.
 
 ## Distillation round 1 (24 h plan, P0–P2)
 
 - **P0 – calibration:** `sft.py` fits temperatures per question type and per language group (pl / other), using
   Polish + Jev-style calibration rows (`joint` / `joint-v2` dirs). On the existing `jev-joint` model, English-set ECE
   dropped from 0.078 / 0.098 / 0.065 to 0.031 / 0.043 / 0.042 (Open-Jev test / OOD / kaivoss) with unchanged accuracy.
-- **P1 – data:** 45,075 Polish real-text items were labelled by basal-1.0-**1.5B** (5.7 decisions/s). The 4.5B model
-  ran at only 1.6 decisions/s on these longer prompts, which would have taken 10 h for 60k items. The realistic eval
-  set `ext/pl_real.jsonl` has 792 items: 1,900 held-out candidates labelled by basal-1.0-4.5B, kept only where
-  Bielik-11B agreed (70.7%) and the teacher was ≥0.7 confident. That filter keeps easy families (ads, money,
-  instructions) and drops formality and quality questions entirely. 78% of its yes/no gold labels are "nie".
+- **P1 – data:** 45,075 Polish real-text items were labelled by the external teacher's small variant (5.7 decisions/s).
+  The large variant ran at only 1.6 decisions/s on these longer prompts, which would have taken 10 h for 60k items.
+  The realistic eval set `ext/pl_real.jsonl` has 792 items: 1,900 held-out candidates labelled by the large variant,
+  kept only where Bielik-11B agreed (70.7%) and the teacher was ≥0.7 confident. That filter keeps easy families (ads,
+  money, instructions) and drops formality and quality questions entirely. 78% of its yes/no gold labels are "nie".
 - **P2 – `jev-joint-v2`:** stage-1 rows + Polish ×5 + distilled ×2 (yes/no majority capped at 60%; 63,604
   distilled rows); 595k rows, 1 epoch, 2.5 h.
 
-| run | Polish test | pl_real (n=792) | basal examples (n=44) | Open-Jev test | Open-Jev OOD | tasksource | kaivoss |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| `jev-joint` | 0.543 | 0.408 | 0.250 | 0.628 | 0.659 | 0.443 | 0.444 |
-| `jev-joint-v2` | **0.570** | **0.734** | **0.432** | 0.632 | 0.648 | 0.450 | 0.394 |
+| run | Polish test | pl_real (n=792) | Open-Jev test | Open-Jev OOD | tasksource | kaivoss |
+|---|---:|---:|---:|---:|---:|---:|
+| `jev-joint` | 0.543 | 0.408 | 0.628 | 0.659 | 0.443 | 0.444 |
+| `jev-joint-v2` | **0.570** | **0.734** | 0.632 | 0.648 | 0.450 | 0.394 |
 
 On pl_real, accuracy by type is choice 0.599, yes/no 0.804 (always answering "nie" scores 0.781) and score 0.952;
 ECE is 0.190. The 1% confidence threshold, fitted on Polish + Jev calibration rows, does not hold on the Polish test
-(9.7% coverage at 12.4% observed error). pl_real labels come from the same model family as the training teacher,
-so part of the gain measures imitation of basal.
+(9.7% coverage at 12.4% observed error). pl_real labels come from the same model that labelled the training data,
+so part of the gain measures imitation of the teacher.
 
 ## Distillation round 2 (P3a)
 
 - **Calibration:** 4% of distilled passages (by `case_id`) are held out into dev/cal, so temperatures and thresholds
   see real Polish text. Confidence thresholds are now fitted per (type, language group) with a global fallback
   (`fit_thresholds` in `sft.py`; groups need ≥200 calibration items).
-- **Weighted second round:** `distill/family_gaps.py` scored `jev-joint-v2` against basal-1.0-1.5B on 2,000 fresh
-  teacher-labelled items. It set family weights from KL(teacher‖student), from topic 2.8 and genre 2.3 down to 0.5
+- **Weighted second round:** `distill/family_gaps.py` scored `jev-joint-v2` against the teacher labels on 2,000 fresh
+  labelled items. It set family weights from KL(teacher‖student), from topic 2.8 and genre 2.3 down to 0.5
   for yes/no families the student already matched. `build_pool.py --family-weights --exclude` then drew 78,000 new
-  items from passages unused in round 1. These were labelled by basal-1.0-1.5B (5.6 decisions/s, 3.9 h).
+  items from passages unused in round 1. These were labelled by the small teacher variant (5.6 decisions/s, 3.9 h).
 - **`jev-joint-v3`:** stage-1 rows + Open-Jev/kaivoss ×2 + Polish ×5 + both distilled rounds ×2 (yes/no majority
   ≤60%); 877k rows, 1 epoch, 3.8 h.
 - `distill/export_spotcheck.py` writes 100 stratified pl_real items to `work/distill/spotcheck_pl_real.{md,csv}` for
   human review.
 
-| run | Polish test | pl_real (n=792) | basal examples (n=44) | Open-Jev test | Open-Jev OOD | tasksource | kaivoss |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| `jev-joint` | 0.543 | 0.408 | 0.250 | 0.628 | 0.659 | 0.443 | 0.444 |
-| `jev-joint-v2` | **0.570** | 0.734 | **0.432** | **0.632** | 0.648 | **0.450** | 0.394 |
-| `jev-joint-v3` | 0.542 | **0.768** | 0.364 | 0.631 | 0.649 | 0.449 | **0.487** |
+| run | Polish test | pl_real (n=792) | Open-Jev test | Open-Jev OOD | tasksource | kaivoss |
+|---|---:|---:|---:|---:|---:|---:|
+| `jev-joint` | 0.543 | 0.408 | 0.628 | 0.659 | 0.443 | 0.444 |
+| `jev-joint-v2` | **0.570** | 0.734 | **0.632** | 0.648 | **0.450** | 0.394 |
+| `jev-joint-v3` | 0.542 | **0.768** | 0.631 | 0.649 | 0.449 | **0.487** |
 
 Confidence thresholds (target error → coverage at observed error):
 
@@ -319,16 +317,17 @@ those held-out round-1 passages.
 ## Joint v4 and a larger teacher-labelled eval
 
 - **`ext/pl_real_t45.jsonl`:** 1,606 items. 3,000 new candidates come from held-out documents not used by
-  `pl_real`, labelled by basal-1.0-4.5B alone (`make_eval.py --teacher-only`, confidence ≥0.7, ≤10% per family).
-  87.5% of its yes/no gold labels are "nie", so its yes/no part barely separates models; choice items (n=537) do.
+  `pl_real`, labelled by the large teacher variant alone (`make_eval.py --teacher-only`, confidence ≥0.7, ≤10% per
+  family). 87.5% of its yes/no gold labels are "nie", so its yes/no part barely separates models; choice items
+  (n=537) do.
 - **`jev-joint-v4`:** the v3 mixture with Polish synthetic ×8 (instead of ×5) and the distilled yes/no majority capped
   at 55%; 973k rows, 1 epoch, 4.0 h. v2 and v3 were re-scored on the new set with the v3 calibration split.
 
-| run | Polish test (±0.014) | pl_real (n=792) | pl_real_t45 (n=1,606, ±0.017) | t45 choice (n=537) | basal examples | Open-Jev test | Open-Jev OOD | tasksource | kaivoss |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| `jev-joint-v2` | **0.570** | 0.734 | 0.852 | 0.771 | **0.432** | 0.632 | 0.648 | 0.450 | 0.394 |
-| `jev-joint-v3` | 0.542 | 0.768 | 0.860 | 0.808 | 0.364 | 0.631 | 0.649 | 0.449 | **0.487** |
-| `jev-joint-v4` | 0.548 | **0.789** | **0.866** | **0.821** | 0.341 | **0.635** | **0.665** | **0.452** | 0.414 |
+| run | Polish test (±0.014) | pl_real (n=792) | pl_real_t45 (n=1,606, ±0.017) | t45 choice (n=537) | Open-Jev test | Open-Jev OOD | tasksource | kaivoss |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `jev-joint-v2` | **0.570** | 0.734 | 0.852 | 0.771 | 0.632 | 0.648 | 0.450 | 0.394 |
+| `jev-joint-v3` | 0.542 | 0.768 | 0.860 | 0.808 | 0.631 | 0.649 | 0.449 | **0.487** |
+| `jev-joint-v4` | 0.548 | **0.789** | **0.866** | **0.821** | **0.635** | **0.665** | **0.452** | 0.414 |
 
 | run | Polish test @1% | Polish test @5% | pl_real_t45 @5% |
 |---|---:|---:|---:|
@@ -340,33 +339,12 @@ Polish ×8 did not bring back the synthetic rule families. v4's Polish test is 0
 fell to 0.552 and deadlines are 0.385. On real Polish text v4 is the best model (pl_real +2.1 over v3, t45 choice
 +5.0 over v2), but its thresholds hold only on real text. On the template-shifted synthetic test (the held-out
 template writes ISO dates) they accept 4.6% / 10.8% errors at 1% / 5% targets. kaivoss swings between 0.39 and 0.49
-across runs, so differences there are not meaningful. The 44 basal examples keep ranking runs differently
-(0.34–0.43); with n=44 that is noise.
-
-## Comparison with basal-1.0
-
-`compare_basal.py` scores basal-1.0 (through `basal-serve`, as served) and basal-scratch runs on the same seeded
-subsets (≤800 items per set; `work/compare_basal.json`). Accuracy:
-
-| model | active params | Polish test | basal examples (44) | Open-Jev test | Open-Jev OOD | tasksource | kaivoss | pl_real* | pl_real_t45* |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| basal-1.0-4.5B | 4.8B | **0.618** | **0.795** | 0.623 | 0.665 | **0.618** | **0.813** | (1.000) | (1.000) |
-| basal-1.0-1.5B | 1.6B | 0.573 | 0.750 | 0.535 | 0.594 | 0.565 | 0.755 | 0.890 | 0.914 |
-| `jev-joint-v4` | 0.037B | 0.563 | 0.341 | **0.659** | **0.674** | 0.448 | 0.395 | 0.789 | 0.860 |
-| `jev-joint-v3` | 0.037B | 0.555 | 0.364 | 0.643 | 0.660 | 0.438 | 0.474 | 0.768 | 0.848 |
-| `jev-joint-v2` | 0.037B | 0.565 | 0.432 | 0.656 | 0.660 | 0.446 | 0.383 | 0.734 | 0.844 |
-
-\* labelled by basal-1.0-4.5B, so 4.5B scores 1.000 by construction and 1.5B (the distillation teacher) is advantaged.
-
-Throughput on the same M4 Max (both option orders): basal-scratch 57–357 decisions/s with in-process batched
-prediction; basal-1.0-1.5B 2.4–11 and basal-1.0-4.5B 0.8–3.7 decisions/s through `basal-serve` with 8 concurrent
-clients. The serving paths differ, so treat the ratio as indicative.
+across runs, so differences there are not meaningful.
 
 ## Text-quality labelling tool (`quality/`)
 
 A data-intake quality check in progress. It samples documents, computes every metric a future classifier may use,
-and lets a person label HIGH / MEDIUM / LOW while seeing those metrics. Design: `QUALITY_CLASSIFIER.md`; loop and
-multilingual research: `quality/RESEARCH_loop_multilingual.md`.
+and lets a person label HIGH / MEDIUM / LOW while seeing those metrics. Design: `QUALITY_CLASSIFIER.md`.
 
 | Step | Command | Time | Resumable |
 |---|---|---:|---|
@@ -413,8 +391,8 @@ summed and capped at 1.0.
 
 ## Harness decider: restricted-data / PII dataset (`harness/pii_gen.py`)
 
-Synthetic typed-decision data for a local data guard in coding harnesses (idea and evidence:
-`USE_CASES_RESEARCH.md` §2a). The guard reads a data policy, a channel, a destination and the content, then decides
+Synthetic typed-decision data for a local data guard in coding harnesses (idea and evidence: `FINDINGS.md`,
+data-guard / permission-gate evidence). The guard reads a data policy, a channel, a destination and the content, then decides
 what to do with it. All people, companies and values are fictional.
 
 ```bash

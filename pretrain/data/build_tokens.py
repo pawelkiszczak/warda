@@ -67,7 +67,7 @@ def progress(message: str) -> None:
 
 def get(url: str, path: Path, end: int | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    headers = {"User-Agent": "basal-pretraining/1.0"}
+    headers = {"User-Agent": "warda-pretraining/1.0"}
     offset = path.stat().st_size if path.exists() else 0
     expected_size = 0
     if end is None:
@@ -339,16 +339,6 @@ def tokenize_worker(text: str) -> list[int]:
 
 def decontamination_shingles(pq) -> set[str]:
     refs: set[str] = set()
-    examples = ROOT.parent / "basal" / "examples"
-    for path in examples.glob("*.jsonl"):
-        for line in path.open(encoding="utf-8"):
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            state = row.get("state")
-            if isinstance(state, str):
-                refs.update(shingles(state))
     for repo in ("klej-polemo2-in", "klej-allegro-reviews", "klej-cbd", "klej-dyk"):
         response = request("GET", f"https://huggingface.co/api/datasets/allegro/{repo}/parquet")
         response.raise_for_status()

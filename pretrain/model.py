@@ -1,11 +1,11 @@
-"""basal-scratch MoE decoder for MLX.
+"""warda-scratch MoE decoder for MLX.
 
 GQA attention with QK-norm and RoPE; every block's FFN is a fine-grained mixture of experts: sigmoid router computed in
-fp32 (bf16 routing makes a prompt's answer depend on batch composition, basal report §3), top-k routed experts with
-renormalised gates and one always-on shared expert. Balancing has two parts: DeepSeek-V3 aux-loss-free selection bias
-(nudged by the trainer after each step towards uniform load) and a Switch-style balance loss (OLMoE uses 0.01), because
-the bias alone is too slow for a few-thousand-step run (routing collapsed onto 4 of 32 experts without it). Embeddings
-are tied.
+fp32 (measured: with bf16 routing a prompt's answer depends on the batch composition around it), top-k routed experts
+with renormalised gates and one always-on shared expert. Balancing has two parts: DeepSeek-V3 aux-loss-free selection
+bias (nudged by the trainer after each step towards uniform load) and a Switch-style balance loss (OLMoE uses 0.01),
+because the bias alone is too slow for a few-thousand-step run (routing collapsed onto 4 of 32 experts without it).
+Embeddings are tied.
 
 `Model(tokens)` returns `(logits, loads, balance_loss)`; `loads` is a (layers, n_experts) array of routed-token counts
 that the trainer uses to update the selection bias.

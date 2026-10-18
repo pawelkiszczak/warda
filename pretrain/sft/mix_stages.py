@@ -5,7 +5,7 @@
 - `work/sft_jev/joint/`: all stage-1 train rows + Polish train ×`--polish-copies` (default 3).
 - `work/sft_jev/joint-v2/` (only when `work/distill/teacher_train.jsonl` exists): stage-1 rows + Polish train
   ×`--v2-polish-copies` (default 5) + teacher-distilled Polish real-text items ×`--distill-copies` (default 2), with
-  the distilled yes/no majority class subsampled to ≤60% (basal's rule for converted data).
+  the distilled yes/no majority class subsampled to ≤60% (the converted-data class-balance rule).
 - `work/sft_jev/joint-v3/` (when `work/distill/teacher_round2.jsonl` also exists): joint-v2 recipe over both teacher
   rounds, Open-Jev + kaivoss rows doubled, and 4% of distilled passages held out into dev/cal.
 - `work/sft_jev/joint-v4/`: joint-v3 with Polish train ×`--v4-polish-copies` (default 8) and the distilled yes/no
@@ -35,7 +35,7 @@ def write(path, lines):
 
 
 def copies(lines, n):
-    """n copies with unique ids (the trainer caches prompts by id)."""
+    """n copies with unique ids (ids stay distinct across the mixture and in any downstream eval)."""
     if n == 1:
         return list(lines)
     return [json.dumps({**json.loads(line), "id": f"{json.loads(line)['id']}#copy{c}"}, ensure_ascii=False)
@@ -43,7 +43,7 @@ def copies(lines, n):
 
 
 def balance_noul(lines, rng, max_share=0.6):
-    """Basal rule for converted data: no yes/no class above 60%. Teacher labels on real text are ~88% "nie"
+    """Class-balance rule for converted data: no yes/no class above 60%. Teacher labels on real text are ~88% "nie"
     (most passages contain no ads, personal data, …), so the majority class is subsampled; other types are kept."""
     rows = [json.loads(line) for line in lines]
     noul = [r for r in rows if r["type"] == "noul"]

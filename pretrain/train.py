@@ -1,4 +1,4 @@
-"""Pretrain the basal-scratch MoE from scratch on the token bins written by `pretrain/data/` (MLX, Apple Silicon).
+"""Pretrain the warda-scratch MoE from scratch on the token bins written by `pretrain/data/` (MLX, Apple Silicon).
 
 Mixed precision: fp32 master weights and AdamW state; the forward/backward runs in bf16 except the routers (fp32).
 Schedule: warmup -> stable -> linear decay to 0 (WSD). Data: `train.bin` cut into non-overlapping (seq+1)-token chunks,
@@ -164,6 +164,9 @@ def main():
 
     log = open(run / "metrics.jsonl", "a")
     per_epoch = train.n // (a.micro * a.accum)
+    if per_epoch == 0:
+        raise SystemExit(f"training data too small: {train.n} chunks give no full optimizer step at "
+                         f"micro={a.micro} x accum={a.accum}; lower --micro/--accum or add data")
     t_last, tok_since = time.perf_counter(), 0
     while step < total_steps:
         lr = lr_at(step, total_steps, a.lr, a.warmup, a.decay_frac)

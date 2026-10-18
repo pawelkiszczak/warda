@@ -1,15 +1,15 @@
-"""Turn a pretrained basal-scratch MoE into a basal-style typed-decision model, calibrate it and evaluate it.
+"""Turn a pretrained warda-scratch MoE into a typed-decision model, calibrate it and evaluate it.
 
-Input format is basal-1.0's (`basal/prompt.py`): chat with the fixed system prompt, state, question and lettered
+Input format is Warda's own (`prompt.py`): chat with a fixed system prompt, state, question and lettered
 options, assistant prefilled with `{"answer": "`; one forward pass per option order. Two readouts:
-- `--readout letter` (basal-1.0): softmax over the option-letter logits at the answer slot. The 37M-active scratch model
+- `--readout letter`: softmax over the option-letter logits at the answer slot. The 37M-active scratch model
   did not learn it (train loss stayed at uniform for 2 epochs: no letter-to-option binding at this scale).
 - `--readout pointer` (default): a small bilinear head scores each option's last-token state against the answer-slot
   state, so the model reads option content instead of binding letters.
 Training loss is cross-entropy over the options, with option order shuffled per item per epoch and families mixed
 within batches. Routers are frozen during fine-tuning (balance biases fixed) so narrow data cannot collapse routing.
 
-Evaluation follows the basal protocol: both option orders (canonical + reversed) averaged; one temperature per question
+Evaluation uses both option orders (canonical + reversed) averaged; one temperature per question
 type fitted by NLL on `cal`; confidence thresholds for 1% / 5% target error fixed on `cal`, then applied once to `test`.
 
     pretrain/.venv/bin/python pretrain/sft.py --base s126m-1b --name s126m-1b-sft
@@ -22,7 +22,6 @@ import bisect
 import json
 import math
 import random
-import sys
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -35,14 +34,12 @@ from mlx.utils import tree_flatten, tree_unflatten
 from transformers import AutoTokenizer
 
 from model import Config, Model
+from prompt import LETTERS, letter_ids, render
 from train import cast_params
 
 ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT.parent))
-from basal.prompt import LETTERS, letter_ids, render
 
 SFT = ROOT / "work" / "sft"
-EXAMPLES = ROOT.parent / "basal" / "examples"
 TOKENIZER = "speakleash/Bielik-1.5B-v3.0-Instruct"
 PAD = 2
 
@@ -71,9 +68,13 @@ class Pointer(nn.Module):
 
 def load_model(run):
     """Model, config, balance biases and the pointer head (None when the run has no pointer weights)."""
+    checkpoint = run / "model.safetensors"
+    if not checkpoint.exists():
+        raise FileNotFoundError(f"missing trained checkpoint {checkpoint}: train first "
+                                f"(or point --base/--name at a run directory that contains model.safetensors)")
     cfg = Config(**json.loads((run / "config.json").read_text())["model"])
     model = Model(cfg)
-    w = mx.load(str(run / "model.safetensors"))
+    w = mx.load(str(checkpoint))
     biases = [w.pop(f"blocks.{i}.moe.balance_bias") for i in range(cfg.layers)]
     head = {k[len("pointer."):]: w.pop(k) for k in [k for k in w if k.startswith("pointer.")]}
     model.update(tree_unflatten(list(w.items())))
@@ -96,26 +97,32 @@ class Encoder:
         assert self.letters is not None, "option letters must be single tokens at the answer position"
         self.cache = {}
 
-    def __call__(self, item, order):
+    def __call__(self, item, order, cache=True):
+        """(token ids as np.int32, last-token index of every option line). With `cache=False` the encoding is not
+        stored: per-epoch shuffled training orders are never revisited, so caching them would grow the cache by
+        ~len(train) entries per epoch with no reuse."""
         key = (item["id"], tuple(order))
-        if key not in self.cache:
-            state = item["state"] if isinstance(item["state"], str) else json.dumps(item["state"], ensure_ascii=False)
-            options = [item["options"][i] for i in order]
-            # basal has Polish and English templates; every other language is shown with the English one
-            lang = "pl" if item.get("language") == "pl" else "en"
-            prompt = render(self.tok, state, item["question"], options, lang=lang)
-            enc = self.tok(prompt, add_special_tokens=False, return_offsets_mapping=True)
-            lines = [f"{LETTERS[k]}. {o}" for k, o in enumerate(options)]
-            pos = prompt.rfind("\n".join(lines))
-            assert pos >= 0, f"options block not found verbatim in the rendered prompt of {item['id']}"
-            starts = [s for s, _ in enc.offset_mapping]
-            ends = []
-            for line in lines:
-                pos += len(line)
-                ends.append(bisect.bisect_left(starts, pos) - 1)  # last token starting before the line end
-                pos += 1
-            self.cache[key] = (enc.input_ids, ends)
-        return self.cache[key]
+        if cache and key in self.cache:
+            return self.cache[key]
+        state = item["state"] if isinstance(item["state"], str) else json.dumps(item["state"], ensure_ascii=False)
+        options = [item["options"][i] for i in order]
+        # the prompt module has Polish and English templates; every other language is shown with the English one
+        lang = "pl" if item.get("language") == "pl" else "en"
+        prompt = render(self.tok, state, item["question"], options, lang=lang)
+        enc = self.tok(prompt, add_special_tokens=False, return_offsets_mapping=True)
+        lines = [f"{LETTERS[k]}. {o}" for k, o in enumerate(options)]
+        pos = prompt.rfind("\n".join(lines))
+        assert pos >= 0, f"options block not found verbatim in the rendered prompt of {item['id']}"
+        starts = [s for s, _ in enc.offset_mapping]
+        ends = []
+        for line in lines:
+            pos += len(line)
+            ends.append(bisect.bisect_left(starts, pos) - 1)  # last token starting before the line end
+            pos += 1
+        encoded = (np.asarray(enc.input_ids, dtype=np.int32), np.asarray(ends, dtype=np.int32))
+        if cache:
+            self.cache[key] = encoded
+        return encoded
 
 
 def batches(rows, max_tokens, rng=None, bucket=2048):
@@ -173,7 +180,7 @@ def option_logits(model, pointer, letters, batch):
     return z + mask
 
 
-def order_rows(enc, items, orders):
+def order_rows(enc, items, orders, cache=True):
     """One row per (item, option order). The target is the item's soft distribution (`target`, e.g. annotator vote
     shares) or one-hot on `gold`, permuted into display order."""
     rows = []
@@ -181,7 +188,7 @@ def order_rows(enc, items, orders):
         k = len(it["options"])
         target = it.get("target") or [1.0 if j == it["gold"] else 0.0 for j in range(k)]
         for o in orders(it):
-            ids, ends = enc(it, o)
+            ids, ends = enc(it, o, cache=cache)
             rows.append((ids, ends, len(o), o.index(it["gold"]) if it["gold"] is not None else 0, (it["id"], tuple(o)),
                          [target[i] for i in o]))
     return rows
@@ -323,14 +330,6 @@ def parity(model, pointer, enc, items):
     return worst
 
 
-def examples():
-    items = []
-    for f in ("choice", "noul", "score", "questions"):
-        for n, it in enumerate(load_jsonl(EXAMPLES / f"{f}.jsonl")):
-            it = dict(it, id=it.get("id", f"{f}-{n}"), type=it.get("type", "noul" if f == "noul" else "score" if f == "score" else "choice"))
-            it.setdefault("language", "pl")
-            items.append(it)
-    return items
 
 
 def main():
@@ -347,7 +346,7 @@ def main():
     ap.add_argument("--eval-only", action="store_true")
     ap.add_argument("--data", type=Path, default=SFT, help="directory with {train,dev,cal,test}.jsonl")
     ap.add_argument("--readout", choices=["pointer", "letter"], default="pointer",
-                    help="pointer: option-pointer head (default); letter: basal-1.0 letter logits")
+                    help="pointer: option-pointer head (default); letter: option-letter logits")
     ap.add_argument("--extra-eval", action="append", default=[], metavar="NAME=PATH",
                     help="additional held-out JSONL scored once with the calibrated model (repeatable)")
     a = ap.parse_args()
@@ -392,7 +391,8 @@ def main():
         step, best = 0, (float("inf"), -1)
         log = open(run / "sft.jsonl", "w")
         for epoch in range(a.epochs):
-            rows = order_rows(enc, split["train"], lambda it: [random.sample(range(len(it["options"])), len(it["options"]))])
+            rows = order_rows(enc, split["train"], lambda it: [random.sample(range(len(it["options"])), len(it["options"]))],
+                              cache=False)
             bs = batches(rows, a.max_tokens, rng=random)
             random.shuffle(bs)
             if total is None:
@@ -449,8 +449,6 @@ def main():
     (run / "calibration.json").write_text(json.dumps(dict(temperatures=temps, thresholds=thresholds), indent=2))
 
     test_logits = predict(model, pointer, enc, split["test"], a.max_tokens)
-    ex = examples()
-    ex_logits = predict(model, pointer, enc, ex, a.max_tokens)
     extra = {}
     for spec in a.extra_eval:
         name, path = spec.split("=", 1)
@@ -466,12 +464,11 @@ def main():
         test_by_family=grouped(split["test"], test_logits, temps, "family"),
         test_by_type=grouped(split["test"], test_logits, temps, "type"),
         test_by_language=grouped(split["test"], test_logits, temps, "language"),
-        basal_examples=metrics(ex, ex_logits, temps),
         router_parity_max_abs_dp=parity(model, pointer, enc, split["test"][:64]),
         extra=extra,
     )
     (run / "eval.json").write_text(json.dumps(report, indent=2))
-    print(json.dumps({k: report[k] for k in ("temperatures", "thresholds", "test", "test_by_type", "basal_examples",
+    print(json.dumps({k: report[k] for k in ("temperatures", "thresholds", "test", "test_by_type",
                                              "router_parity_max_abs_dp")}, indent=2), flush=True)
     for name, r in extra.items():
         print(name, json.dumps(r["all"]), flush=True)

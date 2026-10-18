@@ -1,6 +1,6 @@
 """Mirror a run's local logs into a local MLflow store. Works on finished runs and, with --follow, on runs still training.
 
-Store: `pretrain/work/mlflow.db` (SQLite) + `pretrain/work/mlflow-artifacts/`, experiment `basal-scratch`. No account or
+Store: `pretrain/work/mlflow.db` (SQLite) + `pretrain/work/mlflow-artifacts/`, experiment `warda-scratch`. No account or
 network needed. View with:
 
     pretrain/.venv/bin/mlflow ui --backend-store-uri sqlite:///pretrain/work/mlflow.db --port 5000
@@ -29,7 +29,7 @@ from mlflow.tracking import MlflowClient
 WORK = Path(__file__).resolve().parent / "work"
 RUNS = WORK / "runs"
 URI = f"sqlite:///{WORK / 'mlflow.db'}"
-EXPERIMENT = "basal-scratch"
+EXPERIMENT = "warda-scratch"
 
 
 def key(k):

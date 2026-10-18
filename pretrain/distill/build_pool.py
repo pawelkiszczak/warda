@@ -15,7 +15,7 @@ from common import BANK, LICENSES, ROOT, WORK, applicable, doc_hash, is_polish, 
 import sys
 
 sys.path.insert(0, str(ROOT))
-from basal import prompt as basal_prompt
+from pretrain.prompt import render  # noqa: E402
 
 TOKENS = ROOT / "pretrain" / "work" / "tokens"
 TOKENIZER = ROOT / "pretrain" / "work" / "cache" / "apt4-tokenizer.json"
@@ -133,7 +133,7 @@ def build_items(split: str, target: int, limit: int | None, tokenizer: Tokenizer
             variant = int(digest[10:12], 16) % 3
             question, typ, options = make_question(family, variant, passage)
             item_id = f"{split}-{digest[:16]}-{j}"
-            rendered = basal_prompt.render(prompt_tok, passage, question, options, lang="pl")
+            rendered = render(prompt_tok, passage, question, options, lang="pl")
             prompt_length = len(prompt_tok.encode(rendered, add_special_tokens=False))
             if prompt_length > 1536:
                 continue
@@ -141,7 +141,7 @@ def build_items(split: str, target: int, limit: int | None, tokenizer: Tokenizer
                 "options": options, "type": typ, "family": f"distill/{family}",
                 "template_id": f"{family}/{variant}", "case_id": digest,
                 "language": "pl", "split": split, "label_method": "distilled",
-                "source": source, "license": LICENSES.get(source, "unknown"), "teacher": "basal-1.0-4.5B"})
+                "source": source, "license": LICENSES.get(source, "unknown")})
             fam_counts[family] += 1
             source_counts[source] += 1
     return pool, fam_counts, source_counts
@@ -183,7 +183,7 @@ def main():
         types = Counter(row["type"] for row in rows)
         lengths = Counter()
         for row in rows:
-            rendered = basal_prompt.render(prompt_tok, row["state"], row["question"], row["options"], lang="pl")
+            rendered = render(prompt_tok, row["state"], row["question"], row["options"], lang="pl")
             length = len(prompt_tok.encode(rendered, add_special_tokens=False))
             lengths[min(1536, length // 128 * 128)] += 1
         log(f"{split}: {len(rows):,} items -> {dest}; excluded docs={len(exclude):,}; weights={'yes' if weights else 'no'}; sources={dict(sources)}; families={dict(families)}; types={dict(types)}; prompt_length_bins={dict(sorted(lengths.items()))}")

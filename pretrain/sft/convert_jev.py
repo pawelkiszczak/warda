@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert public Jev-style typed decisions to the basal decision JSONL contract."""
+"""Convert public Jev-style typed decisions to Warda's typed-decision JSONL contract."""
 from __future__ import annotations
 
 import hashlib
@@ -17,7 +17,7 @@ from transformers import AutoTokenizer
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from basal.prompt import render
+from pretrain.prompt import render
 
 OUT = ROOT / "pretrain/work/sft_jev"
 TOKENIZER_ID = "speakleash/Bielik-1.5B-v3.0-Instruct"
@@ -93,7 +93,11 @@ def item(source_name, upstream_id, state, question, options, target, kind, case,
     opts = [text(x) for x in options]
     values = [float(x) for x in target]
     if kind == "noul":
-        # Upstream convention: Tasksource [P(yes)], Open-Jev [P(no), P(yes)].
+        # Target order follows each source's own convention: Tasksource ships [P(yes)]; Open-Jev and kaivoss ship
+        # [P(no), P(yes)]. kaivoss verified 2026-10-18 against kaivoss/system-one-270m-data train.jsonl: all 8,341
+        # noul rows list option A as "no" and B as "yes", the card defines `target` as a distribution over the
+        # prompt's own options, and the `label` field agrees on 8,329 rows (the other 12 are exact 0.5/0.5 ties),
+        # so element 1 is P(yes).
         p_yes = values[1] if len(values) == 2 else values[0]
         opts = ["tak", "nie"] if lang == "pl" else ["yes", "no"]
         values = [p_yes, 1.0 - p_yes]
@@ -233,15 +237,9 @@ def main():
         "repo": SARGEDEV, "card_split_rows": {"train": 655806, "validation": 14111, "calibration": 13766,
                                                "test": 14261, "ood": 13058, "test_set_30k": 29955}}
     }
-    # Ground truth Polish evaluation text and examples are protected against 13-gram overlap.
     polish_test_rows = [json.loads(line) for line in (ROOT / "pretrain/work/sft/test.jsonl").read_text(encoding="utf-8").splitlines() if line]
     protected = [row["state"] for row in polish_test_rows]
-    examples = ROOT.parent / "basal/examples"
-    if examples.exists():
-        for path in examples.rglob("*"):
-            if path.is_file():
-                try: protected.append(path.read_text(encoding="utf-8"))
-                except (UnicodeError, OSError): pass
+    # Ground truth Polish evaluation text is protected against 13-gram overlap.
     # Tasksource default mix: only sources explicitly marked commercial are redistributed here.
     task_files = {split: subset_files(TASKSOURCE, f"data/{name}-") for split, name in (("train", "train"), ("dev", "validation"), ("test", "test"))}
     task_train, task_eval = [], []

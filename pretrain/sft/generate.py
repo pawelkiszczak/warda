@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate validated, split-safe synthetic and public basal decision data.
+"""Generate validated, split-safe synthetic and public typed-decision data.
 
 Run from the repository root with pretrain/.venv/bin/python pretrain/sft/generate.py.
 The script downloads only the four permitted KLEJ CSV datasets, builds all records,
@@ -22,6 +22,8 @@ from transformers import AutoTokenizer
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+from pretrain.prompt import letter_ids, render  # noqa: E402
+
 OUT = ROOT / "pretrain/work/sft"
 TOKENIZER_ID = "speakleash/Bielik-1.5B-v3.0-Instruct"
 SEED = 211
@@ -282,6 +284,8 @@ def make_amount(rng: random.Random, split: str, idx: int, lang: str = "pl") -> l
     opts, gold = money_options(correct)
     row = item(state, "Jaka jest prawidłowa kwota?", opts, gold, "choice", "amounts",
                f"amounts-{ti}", case, lang, split)
+    if lang == "en":
+        row["_en"] = dict(net=net, gross=gross, vat=vat, discount=discount, parts=parts)
     rows = [row]
     base_idx = idx // 8
     if split == "test" or (split == "train" and base_idx % 2 == 0):
@@ -313,8 +317,11 @@ def make_amount(rng: random.Random, split: str, idx: int, lang: str = "pl") -> l
                 combined = money_values(correct, twin_correct)
                 shared = [f"{v:.2f} zł" for v in combined]
                 row["options"], row["gold"] = shared, combined.index(round(correct, 2))
-                rows.append(item(twin_state, row["question"], shared, combined.index(round(twin_correct, 2)),
-                                 "choice", "amounts", f"amounts-{ti}", case, lang, split))
+                twin_row = item(twin_state, row["question"], shared, combined.index(round(twin_correct, 2)),
+                                "choice", "amounts", f"amounts-{ti}", case, lang, split)
+                if lang == "en":
+                    twin_row["_en"] = dict(net=twin_net, gross=twin_gross, vat=vat, discount=discount, parts=parts)
+                rows.append(twin_row)
     return rows
 
 
@@ -402,15 +409,25 @@ def make_severity(rng: random.Random, split: str, idx: int, lang: str = "pl") ->
     state += (" Reguła: wysoki, gdy dotyczy co najmniej 1000 osób lub deadline jest za najwyżej 1 godz.; "
               "średni, gdy dotyczy co najmniej 50 osób, awaria trwa co najmniej 3 godz. albo deadline jest za najwyżej 4 godz.; "
               "w pozostałych przypadkach niski.")
-    return [item(state, "Jaki poziom pilności wynika z reguły?", ["niski", "średni", "wysoki"],
-                 score - 1, "score", "urgency", f"urgency-{ti}", case, lang, split)]
+    row = item(state, "Jaki poziom pilności wynika z reguły?", ["niski", "średni", "wysoki"],
+               score - 1, "score", "urgency", f"urgency-{ti}", case, lang, split)
+    if lang == "en":
+        # englishize() rebuilds the English state from these generator values instead of re-parsing the Polish text
+        row["_en"] = dict(users=users, hours=hours, deadline=hours2)
+    return [row]
 
 
 GENERATORS = [make_deadline, make_amount, make_rule, make_route, make_severity]
 
 
 def englishize(row: dict) -> None:
+    """Rewrite one generated row's Polish state/question/options in English, in place.
+
+    Amounts and urgency states are rebuilt from the generator-supplied `_en` facts (popped here, never serialized)
+    rather than re-parsed from the Polish text, so the English wording states exactly the values the gold label was
+    computed from. A missing fact raises instead of silently substituting a default."""
     state, family = row["state"], row["family"]
+    gen_facts = row.pop("_en", None)
     if family == "sufficiency":
         family = row["template_id"].split("-", 1)[0]
     template = int(row["template_id"].rsplit("-", 1)[-1])
@@ -442,20 +459,20 @@ def englishize(row: dict) -> None:
         filing = f" The action was filed on {english_date(date_matches[1])}." if len(date_matches) > 1 else ""
         row["state"] = f"{context_text} {event}The period is {n} {unit}. The end moves to the next business day when it falls on a weekend or Polish public holiday.{filing}".strip()
     elif family == "amounts":
-        values = re.findall(r"\d+\.\d{2}", state)
-        rates = re.findall(r"(\d+)%", state)
-        vat = rates[0] if rates else "23"
+        if not gen_facts or not {"net", "gross", "vat", "discount", "parts"} <= gen_facts.keys():
+            raise ValueError(f"missing generator facts for English amounts row {row['id']}")
         if template in (0, 6):
-            details = f"The net price is {values[0]} PLN. VAT rate: {vat}%."
+            details = f"The net price is {gen_facts['net']:.2f} PLN. VAT rate: {gen_facts['vat']}%."
         elif template in (1, 3):
-            details = f"The gross price is {values[0]} PLN. VAT rate: {vat}%."
+            details = f"The gross price is {gen_facts['gross']:.2f} PLN. VAT rate: {gen_facts['vat']}%."
         elif template in (2, 4):
-            details = f"The net list price is {values[0]} PLN, discount is {rates[0] if len(rates) > 1 else '10'}%, and VAT rate is {vat}%."
+            details = (f"The net list price is {gen_facts['net']:.2f} PLN, discount is {gen_facts['discount']}%, "
+                       f"and VAT rate is {gen_facts['vat']}%.")
         elif template == 5:
-            parts = re.search(r"(\d+) równych rat", state)
-            details = f"The gross total is {values[0]} PLN, payable in {parts.group(1) if parts else '3'} equal installments."
+            details = (f"The gross total is {gen_facts['gross']:.2f} PLN, "
+                       f"payable in {gen_facts['parts']} equal installments.")
         else:
-            details = f"The gross price is {values[0]} PLN, discount is {rates[0] if rates else '10'}%."
+            details = f"The gross price is {gen_facts['gross']:.2f} PLN, discount is {gen_facts['discount']}%."
         row["state"] = f"{context_text} {details}".strip()
         row["options"] = [o.replace(" zł", " PLN") for o in row["options"]]
     elif family == "thresholds":
@@ -490,15 +507,14 @@ def englishize(row: dict) -> None:
                           "Delivery — parcels and arrival", "Returns — returns and complaints"]
         row["gold"] = {"Dział rozliczeń": 0, "Dział techniczny": 1, "Dział dostaw": 2, "Dział reklamacji": 3}[department]
     else:
-        users = re.search(r"(?:dotknięci użytkownicy|użytkownicy objęci awarią|liczba użytkowników|użytkownicy|użytkowników|osób|poszkodowane konta)[: ]+(\d+)", state)
-        durations = re.findall(r"(?:awaria|czas przerwy|niedostępność|przerwa)[: ]+(?:trwa )?(\d+) godz", state)
-        deadline_match = re.search(r"(?:deadline|termin krytyczny|czas do deadline'u|termin biznesowy)(?: za|:)? (\d+) godz", state)
-        affected = users.group(1) if users else "12"
-        outage = durations[0] if durations else "3"
-        deadline_hours = deadline_match.group(1) if deadline_match else (durations[1] if len(durations) > 1 else "4")
-        row["state"] = (f"{context_text} {affected} users are affected; the outage has lasted {outage} hours; "
-                        f"the critical deadline is in {deadline_hours} hours. High: at least 1000 users or deadline within 1 hour; "
-                        "medium: at least 50 users, outage of at least 3 hours, or deadline within 4 hours; otherwise low.").strip()
+        if not gen_facts or not {"users", "hours", "deadline"} <= gen_facts.keys():
+            raise ValueError(f"missing generator facts for English urgency row {row['id']}")
+        row["state"] = (f"{context_text} {gen_facts['users']} users are affected; "
+                        f"the outage has lasted {gen_facts['hours']} hours; "
+                        f"the critical deadline is in {gen_facts['deadline']} hours. "
+                        "High: at least 1000 users or deadline within 1 hour; "
+                        "medium: at least 50 users, outage of at least 3 hours, or deadline within 4 hours; "
+                        "otherwise low.").strip()
     row["language"] = "en"
     row["question"] = {"Jaki jest ostatni dzień terminu?": "What is the final deadline date?",
                        "Jaka jest prawidłowa kwota?": "What is the correct amount?",
@@ -605,8 +621,7 @@ def validate(rows: list[dict], tokenizer) -> tuple[list[dict], Counter]:
         if row["id"] in seen:
             raise ValueError(f"duplicate id: {row['id']}")
         seen.add(row["id"])
-        prompt = __import__("basal.prompt", fromlist=["render"]).render(tokenizer, row["state"], row["question"], options, row["language"])
-        from basal.prompt import letter_ids
+        prompt = render(tokenizer, row["state"], row["question"], options, row["language"])
         if letter_ids(tokenizer, prompt, len(options)) is None or len(tokenizer(prompt, add_special_tokens=False).input_ids) > 1536:
             dropped["render"] += 1
             continue
