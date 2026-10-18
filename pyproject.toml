@@ -36,7 +36,7 @@ dev = [
 package = false
 
 [tool.pytest.ini_options]
-testpaths = ["pretrain"]
+testpaths = ["pretrain", "scripts"]
 pythonpath = ["."]
 
 [tool.ruff]
@@ -73,10 +73,11 @@ ignore = ["E501", "PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR091
 "pretrain/sft/mix_stages.py" = ["T201", "S311", "RUF002"] # CLI output, seeded mixture sampling, and multiplication signs are intentional.
 "pretrain/quality/tests/test_textstats.py" = ["RUF001"] # Mixed-script test fixture intentionally contains a Cyrillic lookalike.
 "pretrain/quality/textstats.py" = ["RUF001"] # Linguistic feature fixtures preserve real Unicode punctuation.
+"scripts/issues_sync.py" = ["T201", "S603", "S607", "RUF001"] # CLI output; subprocess runs the gh binary from PATH by design; milestone titles use en dashes verbatim.
 
 [tool.mypy]
 python_version = "3.12"
-files = ["pretrain"]
+files = ["pretrain", "scripts"]
 ignore_missing_imports = true
 check_untyped_defs = true
 warn_unused_ignores = true

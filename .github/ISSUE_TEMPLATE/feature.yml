@@ -1,0 +1,69 @@
+name: Task
+description: A 2–5 h task with a definition of done
+title: "[P?-??] "
+labels: []
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this task exists; link to plan section / gate / parent issue.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: In-scope bullets, then an "Out of scope" line.
+    validations:
+      required: true
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Deliverables
+      description: Exact files, symbols, CLI flags, data paths.
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of done
+      description: Checklist (`- [ ]`) of observable outcomes.
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Automated tests
+      description: Test file paths and the behaviours each test pins.
+    validations:
+      required: true
+  - type: textarea
+    id: docs
+    attributes:
+      label: Documentation
+      description: >-
+        Which files under `docs/`, `README.md`, `pretrain/README.md`, `AGENTS.md` change and what they must say.
+    validations:
+      required: true
+  - type: textarea
+    id: manual
+    attributes:
+      label: Manual test (human, before the PR)
+      description: Numbered steps with expected observations.
+    validations:
+      required: true
+  - type: textarea
+    id: deps
+    attributes:
+      label: Dependencies
+      description: Issue IDs/links.
+    validations:
+      required: false
+  - type: textarea
+    id: team
+    attributes:
+      label: Team / hardware / estimate
+      description: Owning team, compute level (laptop / strong / cloud) and estimate in hours.
+    validations:
+      required: false

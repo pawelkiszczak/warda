@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: How tasks are structured
+    url: https://github.com/pawelkiszczak/warda/blob/main/docs/issues/README.md
+    about: Read how tasks are structured before filing one

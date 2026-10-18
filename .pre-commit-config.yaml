@@ -44,9 +44,9 @@ repos:
     rev: v2.4.0
     hooks:
       - id: mypy
-        name: mypy (pretrain)
+        name: mypy (pretrain, scripts)
         args: [--config-file=pyproject.toml]
-        files: ^pretrain/
+        files: ^(pretrain|scripts)/
         pass_filenames: false
         additional_dependencies: [types-requests]
 

@@ -1,0 +1,79 @@
++++
+id = "P0-06"
+title = "Shared evaluation protocol and `warda/bench` harness with trivial baselines"
+labels = ["phase:0", "team:benchmarks", "type:feature", "gate:2"]
+milestone = "Phase 0 — Kick-off (weeks 1–2)"
+depends_on = ["P0-01"]
+estimate_hours = 8
+hardware = "laptop"
+github_issue = 0
++++
+
+## Context
+
+Plan §8: "one shared way of evaluating". Gates 2 and 3 are stated in those terms (beats "always allow" and pattern
+matching; ≥ 80 % leak recall to public destinations at ≤ 5 % unnecessary blocks). `pretrain/sft.py` already
+computes accuracy/NLL/Brier/ECE/coverage on its own test split, but there is no evaluator that takes *any* decider
+(regex, Presidio, a model, a hook) and scores it on *any* set with the gate metrics.
+
+## Scope
+
+- `warda/bench/` with a `Decider` protocol, set loader, metrics, runner CLI, markdown report, and two trivial
+  deciders.
+- Out of scope: Presidio/ggshield adapters (P1-11), the model decider (P3-03).
+
+## Deliverables
+
+- `warda/bench/protocol.py`: `class Decider(Protocol): name: str; def decide(self, *, payload: str, channel: str,
+  destination: str, policy: str, language: str) -> Decision` (`Decision` from `warda.schema`).
+- `warda/bench/sets.py`: `load_set(path) -> list[Item]` accepting the `pii_gen` item JSONL (uses rows with
+  `question_id == "action"`, derives `payload` by parsing the state block the way `build_items` wrote it —
+  implement `split_state(state) -> dict(policy, channel, destination, payload)` from the labelled sections) and
+  the handwritten schema (P1-10) which already has the fields. Field `gold_action` always present.
+- `warda/bench/metrics.py`: `confusion(actions_true, actions_pred)`; `leak_recall_public` = fraction of items with
+  `gold != allow` and `DEST_CLASS[dest] == "public"` whose prediction is `!= allow`; `false_block_rate` = fraction
+  of items with `gold == allow` predicted `block` or `ask_user`; `over_redaction` = gold allow → redact; accuracy;
+  macro-F1 over the four actions; `ece` (15-bin) and `coverage_at_error(target=0.01)` when `confidence` present
+  (same definitions as `pretrain/sft.py` `metrics` — reimplement in pure Python, do not import MLX); per-slice
+  breakdown by `language`, `category`, `DEST_CLASS`, `policy`.
+- `warda/bench/deciders/trivial.py`: `AlwaysAllow`, `AlwaysBlock`, `PolicyOracle` (uses the gold category from
+  the item and `pii_gen.action_for` — upper bound showing what perfect categorisation gives).
+- `warda/bench/run.py`: CLI `python -m warda.bench.run --set PATH [--set PATH…] --decider NAME [--decider …]
+  --out DIR [--limit N]` → `DIR/report.json` (`{set, decider, n, metrics, slices, items: [{id, gold, pred,
+  confidence}]}` per pair) and `DIR/report.md` with one table per set: decider × (accuracy, macro-F1,
+  leak_recall_public, false_block_rate, ece, coverage@1%). Decider registry `DECIDERS: dict[str, Callable[[],
+  Decider]]` in `warda/bench/deciders/__init__.py`.
+- `docs/bench/PROTOCOL.md`: metric definitions with formulas, which sets exist, gate thresholds mapped to metric
+  names (gate 2: `accuracy` > `AlwaysAllow` and > the tier-1 regex decider on `test` and `test_ood`; gate 3:
+  `leak_recall_public ≥ 0.80` and `false_block_rate ≤ 0.05` on the handwritten set), reporting rules (always
+  report `n`, seed, set version/commit).
+
+## Definition of done
+
+- [ ] `python -m warda.bench.run --set pretrain/work/harness_pii/items/test.jsonl --decider always_allow --decider
+      always_block --decider policy_oracle --out /tmp/b` produces both reports; `policy_oracle` accuracy is 1.0
+- [ ] `--limit 50` runs in < 5 s on CPU with no MLX import
+- [ ] `docs/bench/PROTOCOL.md` is the single definition referenced by gate records
+
+## Automated tests
+
+- `warda/bench/tests/test_metrics.py`: hand-built 8-item set with known confusion → exact
+  `leak_recall_public`, `false_block_rate`, macro-F1; ECE of a perfectly calibrated toy is 0; coverage at 1 %
+  returns 0 when every confident item is wrong.
+- `warda/bench/tests/test_sets.py`: `split_state` round-trips a state built by `pii_gen.build_items` for one
+  synthetic record (the record from `test_pii_gen.py::test_build_items_labels_twins_and_holds_out_policy`).
+- `warda/bench/tests/test_run.py`: runner on a 6-item temp set with `always_allow` writes `report.json` whose
+  `items` length is 6 and `report.md` has a table row per decider.
+
+## Documentation
+
+- `docs/bench/PROTOCOL.md` (new); `README.md` "Contents" `warda/bench` line; `AGENTS.md` "Run" gains the bench
+  command.
+
+## Manual test (human, before the PR)
+
+1. Run the DoD command; open `/tmp/b/report.md`: `always_allow` has `leak_recall_public = 0.0`, `always_block` has
+   `false_block_rate = 1.0`, `policy_oracle` 1.0 accuracy.
+2. Pick 3 rows from `report.json["items"]`, open the matching ids in `test.jsonl`, confirm `gold` matches the
+   `action` field there.
+3. Run with `--limit 20` on `test_ood.jsonl` → works (the OOD policy text parses).
