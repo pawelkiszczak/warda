@@ -14,8 +14,10 @@ from pathlib import Path
 import re
 import site
 
-path = next(Path(root) / "pl_nask" / "morf.py" for root in site.getsitepackages()
-            if (Path(root) / "pl_nask" / "morf.py").is_file())
+path = next((Path(root) / "pl_nask" / "morf.py" for root in site.getsitepackages()
+             if (Path(root) / "pl_nask" / "morf.py").is_file()), None)
+if path is None:
+    raise SystemExit("pl_nask/morf.py not found in site-packages; cannot patch the Morfeusz import")
 source = path.read_text()
 pattern = r'if platform\.uname\(\)\.system == ["\']Darwin["\']:\s*\n[ \t]+from \. import morf_interface as morfeusz2\s*\nelse:\s*\n[ \t]+import morfeusz2'
 source, count = re.subn(pattern, "import morfeusz2", source, count=1)

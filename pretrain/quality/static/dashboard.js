@@ -177,7 +177,7 @@ function renderAuto() {
     ['loop_score > 0.3', loopHi, pct(loopHi, n) + ' of sample'],
     ['multilingual_score > 0.3', mlHi, pct(mlHi, n) + ' of sample'],
     ['top language not Polish', nonPl, pct(nonPl, n) + ' of sample'],
-    ['median LM loss (nats/token)', fmt(median(nll)), '126M basal-scratch'],
+    ['median LM loss (nats/token)', fmt(median(nll)), '126M scratch model'],
     ['StyloMetrix coverage', pct(stylo, n), `${n - stylo} missing`],
   ]);
 

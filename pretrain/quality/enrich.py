@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Merge StyloMetrix, basal LM NLL, and optional textstats into quality artifacts.
+"""Merge StyloMetrix, scratch-model LM NLL, and optional textstats into quality artifacts.
 Run: pretrain/.venv/bin/python pretrain/quality/enrich.py
 """
 from __future__ import annotations
