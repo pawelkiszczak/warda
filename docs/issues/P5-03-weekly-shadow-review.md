@@ -22,9 +22,15 @@ alarms, fast, real catches).
 
 ## Deliverables
 
+- Reject duplicate/overlapping tester reporting periods and incompatible schema versions; separate model
+  versions and policy/config changes rather than silently pooling them. Carry reviewed/unreviewed counts and
+  confirmed catches into week-4. Zero reviewed non-allow decisions means undefined rate, not zero errors.
+
 - `python -m warda review --reports DIR --week N --out docs/gates/shadow/week-N.md`: per tester (by `[tester]
-  id`) and overall: decisions, non-allow rate, false-alarm rate (marked false_alarm / non-allow), misses
-  reported, p95 latency, agents used; trend vs previous weeks; the 10 most common `reason` codes.
+  id`) and overall: decisions, non-allow rate, false-alarm rate (false_alarm / reviewed non-allow), review coverage,
+  misses
+  reported, p95 latency bin interval from merged histograms, agents used; trend vs previous weeks; the 10 most common
+  `reason` codes.
 - `docs/testing/TRIAGE.md`: how a false alarm or miss becomes an issue (label `type:data` for data gaps,
   `type:feature` for pipeline bugs), with the template; the freeze rule for the window.
 - `docs/gates/shadow/week-{1..4}.md` filled from real tester reports.

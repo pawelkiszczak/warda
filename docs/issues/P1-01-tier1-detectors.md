@@ -3,7 +3,7 @@ id = "P1-01"
 title = "Tier-1 deterministic detectors and redaction (`warda/guard/tier1.py`)"
 labels = ["phase:1", "team:tools", "type:feature", "gate:2"]
 milestone = "Phase 1 — Data and trials (weeks 2–6)"
-depends_on = ["P0-01"]
+depends_on = ["P0-01", "P0-06"]
 estimate_hours = 8
 hardware = "laptop"
 github_issue = 11
@@ -39,8 +39,9 @@ matching" baseline.
   else `direct_pii` if any checksum-ok identifier or email/phone, else `None`.
 - `redact(text, hits) -> str` replacing each hit with `[{KIND}]` (e.g. `[PESEL]`), non-overlapping, longest first.
 - `Tier1Decider` (in `warda/bench/deciders/tier1.py`, registered as `tier1`): category from `classify`, action
-  from `pii_gen.action_for(policy_id, category, destination)` where `policy_id` is resolved by matching the policy
-  title line in the state to `pii_gen.POLICY_TITLE` (both languages); `confidence` 1.0 when a credential/checksum
+  from the shared request policy table through `warda.bench.policies.gold_action`; no title matching or fixed
+  synthetic-policy lookup. No hits maps to category `none`; relevant exceptions unsupported by a deterministic
+  table produce `ask_user` rather than an invented allow; `confidence` 1.0 when a credential/checksum
   hit exists, 0.5 otherwise; `redacted_payload` set when action is `redact`.
 
 ## Definition of done
@@ -60,7 +61,8 @@ matching" baseline.
   contains 11-digit order numbers that fail PESEL checksum and a git SHA) → no checksum-ok hits and no
   `high_entropy` on the SHA; overlapping hits (IBAN containing digits that look like a phone) → longest wins;
   `redact` idempotent; `classify` precedence credential > direct_pii.
-- `warda/bench/tests/test_tier1_decider.py`: policy title resolution for all 4 policies × 2 languages.
+- `warda/bench/tests/test_tier1_decider.py`: all synthetic policies × 2 languages; a custom policy table; unsupported
+  exception → ask_user.
 
 ## Documentation
 

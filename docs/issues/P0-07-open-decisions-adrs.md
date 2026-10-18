@@ -22,10 +22,14 @@ them (training hardware → P2-01; label disputes → P0-05; platforms → P3-03
 
 ## Deliverables
 
+- NVIDIA/cloud-GPU training is not executable with the current MLX trainer. Do not schedule it as a fallback
+  without a separately estimated, approved training-port task and parity checks. CPU participation means
+  non-ML tooling everywhere; MLX mini-training requires a supported Mac.
+
 - `docs/decisions/README.md`: numbering, statuses (`proposed|accepted|superseded`), template:
   `# ADR-NNNN: title` / `Status` / `Context` / `Decision` / `Consequences` / `Revisit when`.
 - `docs/decisions/ADR-0001-model-size.md`: decision rule rather than a number: the shipped model is the smallest
-  size in the P1-05 sweep whose `test_ood` accuracy is within 2 points of the largest tried, subject to the P4-06
+  size in the P1-05 sweep whose `dev_ood` accuracy is within 2 points of the largest tried, subject to the P4-06
   latency budget; interim default 126M MoE / 37M active (the existing `model.py` config).
 - `docs/decisions/ADR-0002-license-and-release.md`: code stays Apache-2.0 (existing `LICENSE`); dataset and
   weights release decided at gate 4; interim: synthetic data committed under `data/` is Apache-2.0, weights not
@@ -35,7 +39,8 @@ them (training hardware → P2-01; label disputes → P0-05; platforms → P3-03
 - `docs/decisions/ADR-0004-label-disputes.md`: adjudicator = GDPR person for category disputes, coordinator for
   process disputes; tie → `unsure` and the item is excluded from gold until a third labeller votes.
 - `docs/decisions/ADR-0005-training-hardware-and-targets.md`: participants' machines for pilots (P1-05), rented
-  GPU/Mac only for the P2-01 full run if no 96–128 GB Mac is listed in `docs/team/HARDWARE.md`; also holds the
+  Apple-silicon Mac only for the P2-01 MLX full run if no 96–128 GB Mac is listed in `docs/team/HARDWARE.md`; also
+  holds the
   default numeric targets other issues cite: latency p95 ≤ 300 ms on Apple silicon 8 GB, ≤ 1 s on x86 CPU 16 GB for
   a ≤ 1k-token state; labeller agreement floor kappa ≥ 0.7.
 - Also records as ADR-0006 whether PRs get CI: current `tests.yml` deliberately runs on `main` only (macOS runners

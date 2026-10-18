@@ -3,7 +3,7 @@ id = "P4-07"
 title = "Provenance tracker and inbound tier-1 redaction (`PostToolUse`)"
 labels = ["phase:4", "team:tools", "type:feature"]
 milestone = "Phase 4 — Integrations (weeks 13–16)"
-depends_on = ["P2-05", "P1-01"]
+depends_on = ["P2-05", "P1-01", "P3-07", "P3-08"]
 estimate_hours = 8
 hardware = "laptop"
 github_issue = 42
@@ -25,6 +25,13 @@ from the team plan; it is scoped here because the hooks and service exist by pha
 
 ## Deliverables
 
+- Also fingerprint exact normalised non-empty lines and extracted key/value values for short restricted
+  records that contain fewer than five words (e.g. `DB_HOST=db.internal.example`). Match whole values/lines,
+  not arbitrary substrings; document collision/false-positive limits and keep only hashes in the ledger.
+- Restricted-source overlap to a non-internal destination imposes `ask_user` for every backend, including MLX
+  and torch; model/bands cannot weaken it to allow. Credential blocks retain highest precedence. Bound the
+  ledger globally as well as per session; expiry/eviction must be observable as coverage limitations.
+
 - Config `[provenance] restricted_paths = ["**/.env", "**/secrets/**", "db/prod/**"]`, `restricted_tools =
   ["mcp__prod_db__*"]`, `ttl_hours = 24`.
 - `warda/guard/provenance.py`: `fingerprint(text) -> set[int]` (hashed word 5-grams, lowercase, 64-bit),
@@ -42,6 +49,9 @@ from the team plan; it is scoped here because the hooks and service exist by pha
 
 ## Definition of done
 
+- [ ] Before this phase-4 work starts, Gate 2 and Gate 3 records state PASS for the candidate version;
+      closing a gate issue with FAIL does not authorise progression. A failed gate requires a new approved PASS.
+
 - [ ] Reading a fictional `.env` through the agent then committing a line from it to `public_repo` → decision
       carries `provenance` with that source and the action is non-allow
 - [ ] A `psql`-style output with three fictional PESELs read via Bash shows `[PESEL]` in the agent's view in
@@ -49,6 +59,9 @@ from the team plan; it is scoped here because the hooks and service exist by pha
 - [ ] Ledger memory bounded: 10k observations of 4 kB each stay < 200 MB (test below)
 
 ## Automated tests
+
+- A one-token `.env` assignment and its copied hostname match; unrelated short words do not. Fake model allow
+  with restricted overlap still asks; credentials still block. Cross-session isolation and global memory cap.
 
 - `warda/guard/tests/test_provenance.py`: fingerprint determinism; overlap thresholds; TTL expiry; memory bound
   (count n-grams, not bytes, with a cap per session and LRU eviction).

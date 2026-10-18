@@ -3,7 +3,7 @@ id = "P4-01"
 title = "Codex CLI hook"
 labels = ["phase:4", "team:tools", "type:feature"]
 milestone = "Phase 4 — Integrations (weeks 13–16)"
-depends_on = ["P2-05", "P3-03"]
+depends_on = ["P2-05", "P3-03", "P3-07", "P3-08"]
 estimate_hours = 5
 hardware = "laptop"
 github_issue = 36
@@ -36,6 +36,11 @@ Integration contract (shared by P4-01 … P4-05):
 
 ## Deliverables
 
+- Enforce mode: `redact` with null/unsafe replacement, unsupported rewrite capability, malformed service
+  response or uninspectable outbound payload denies execution with a reason. Never execute the original payload
+  as a fallback. Shadow mode leaves the call unchanged and records the limitation. Read failure mode from
+  validated local config; invalid config fails closed. Preserve unrelated hooks during install/uninstall.
+
 - `warda/hooks/codex.py` implementing the pre-tool event per HOOKS.md: parse stdin, `classify_tool`, call the
   service, emit the Codex decision JSON (deny / rewritten input / ask) or nothing; `agent.name = "codex"`.
 - `install --scope user|project` merging into the Codex hooks file named in HOOKS.md (backup, idempotent);
@@ -44,11 +49,17 @@ Integration contract (shared by P4-01 … P4-05):
 
 ## Definition of done
 
+- [ ] Before this phase-4 work starts, Gate 2 and Gate 3 records state PASS for the candidate version;
+      closing a gate issue with FAIL does not authorise progression. A failed gate requires a new approved PASS.
+
 - [ ] The three-step manual scenario passes in Codex CLI (redact, deny, shadow)
 - [ ] Hook adds < 300 ms per intercepted call; non-outbound tools are not sent to the service
 - [ ] Install twice → one entry; uninstall → original file
 
 ## Automated tests
+
+- Null redacted payload, malformed service response, uninspectable outbound action and missing/invalid config;
+  enforce denies, shadow records supported limitations without changing the call. Test platform rewrite fallback.
 
 - `warda/hooks/tests/test_codex.py`: fixtures `warda/hooks/tests/fixtures/codex/*.json` from P1-09; mapping for
   each action; unreachable service shadow/enforce; install/uninstall on a temp config with unrelated entries.

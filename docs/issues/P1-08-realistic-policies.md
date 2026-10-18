@@ -3,7 +3,7 @@ id = "P1-08"
 title = "Realistic data policies with the GDPR person"
 labels = ["phase:1", "team:gdpr", "type:data", "gate:3"]
 milestone = "Phase 1 — Data and trials (weeks 2–6)"
-depends_on = ["P0-07"]
+depends_on = ["P0-07", "P0-06"]
 estimate_hours = 5
 hardware = "laptop"
 github_issue = 18
@@ -31,7 +31,8 @@ person.
   can't express (kept for the model to read; items relying on an exception get `label_method = "manual"`).
 - `docs/research/POLICIES.md`: how each policy maps to RODO/GDPR articles, what the summary table cannot express,
   review notes from the GDPR person (GitHub handle).
-- `warda/bench/policies.py`: `load_policy(path) -> Policy(id, language, text, table)` and `gold_action(policy,
+- `warda/bench/policies.py`: `load_policy(path) -> Policy(id, language, text, table, exceptions)` (shared schema type)
+  and `gold_action(policy,
   category, dest)` reusing `warda.schema.DEST_CLASS`.
 
 ## Definition of done

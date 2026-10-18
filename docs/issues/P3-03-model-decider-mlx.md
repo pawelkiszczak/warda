@@ -24,7 +24,8 @@ The service runs the tier-1 decider only. `cand-v1` exists as `work/runs/<name>`
 ## Deliverables
 
 - `warda/service/model_mlx.py`: `class MlxDecider(Decider)` loading `model.safetensors`, `config.json`,
-  `calibration.json`, `pointer.safetensors`, tokenizer (paths from a `model_dir`); `decide()` renders the state
+  `calibration.json`, `pointer.safetensors`, tokenizer (paths from a `model_dir`); `decide(request: DecisionInput)`
+  renders the state
   (policy text, channel, destination, payload, task) with `pretrain/prompt.py` templates by language, asks
   `category` (7 options) and `action` (4 options), averages original/reversed orders, applies temperature by
   (type, language group), returns `Decision` with `confidence = max prob of action`; category also returned.
@@ -34,7 +35,9 @@ The service runs the tier-1 decider only. `cand-v1` exists as `work/runs/<name>`
   copied to `docs/model/CARD-cand-v1.md`.
 - Config: `[decider] kind = "mlx"; model_dir = "~/.warda/models/cand-v1"`; `kind = "tier1"` keeps phase-2
   behaviour.
-- Pipeline order in `Service.decide`: tier-1 credential → block; else model category/action → bands → response;
+- Pipeline order in `Service.decide`: tier-1 credential → block; else deterministic PII policy requirement + model
+  category/action →
+  combine under P2-04 precedence → bands → response;
   `tier1` hits still populate `tier1[]` and drive `redacted_payload`; when the model says `redact` but tier-1 found
   nothing, `redacted_payload` is `None` and the reason says "model: redact, no deterministic spans — ask the
   agent to rewrite" (deny-and-continue semantics: hooks treat it as deny with that reason).
@@ -43,11 +46,16 @@ The service runs the tier-1 decider only. `cand-v1` exists as `work/runs/<name>`
 
 - [ ] `serve` with `kind = "mlx"` answers the P2-04 DoD payloads plus a tier-2 mosaic payload ("jedyna księgowa w
       biurze w Opolu, wczoraj złożyła wypowiedzenie") to `public_repo` with `block` or `ask_user`
-- [ ] Service answers equal `warda.bench.run --decider sft:cand-v1` for 100 `test.jsonl` items (same action and
-      |Δconfidence| < 1e-3)
+- [ ] Raw model outputs equal `warda.bench.run --decider sft:cand-v1` for 100 frozen test items
+      (same action and |Δconfidence| < 1e-3); full service outputs are compared against the full pipeline,
+      including deterministic precedence, bands and session state
 - [ ] p95 end-to-end latency for ≤ 1k-token states ≤ the ADR-0005 budget on the dev Mac (report p50/p95 and RAM)
 
 ## Automated tests
+
+- Valid PESEL under a redact policy + fake model allow cannot allow; policy-permitted internal PII remains
+  permitted. Model block plus deterministic redact stays block. Credential block cannot escalate to ask.
+  Unsafe/missing redaction spans cannot result in an executable rewrite.
 
 - `warda/service/tests/test_model_mlx.py` (`WARDA_SLOW`): load `tiny`-based export fixture (built in-test from
   the `tiny` config, random weights) → `decide` returns valid actions, both orders averaged (monkeypatch

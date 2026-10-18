@@ -18,7 +18,7 @@ the first baseline table.
 ## Scope
 
 - `warda/bench/deciders/presidio.py`, `warda/bench/deciders/ggshield.py`; a `docs/bench/BASELINES.md` report on
-  `test.jsonl`, `test_ood.jsonl` and `data/handwritten/v0.jsonl`.
+  `dev.jsonl`, `dev_ood.jsonl` and `data/handwritten/v0.jsonl`.
 - Out of scope: Bielik-Guard / Prompt Guard (P3-05, they need GPU or HF downloads).
 
 ## Deliverables
@@ -27,13 +27,14 @@ the first baseline table.
   "spacy"]` in `pyproject.toml` (`uv sync --group bench-presidio`), plus a documented `python -m spacy download
   pl_core_news_md` / `en_core_web_lg`; the decider maps entity hits to `direct_pii` (PERSON, EMAIL, PHONE, IBAN,
   CREDIT_CARD, PL_PESEL via a custom recognizer using `warda.guard.checksums`) and otherwise `None`; action via
-  `pii_gen.action_for` like `tier1`; `confidence` = max Presidio score.
+  the supplied shared `Policy` table like `tier1`, including conservative handling of exceptions; `confidence` = max
+  Presidio score.
 - ggshield adapter: shells out to `ggshield secret scan path` on a temp file (free account API key via
   `GITGUARDIAN_API_KEY` env; skipped with a clear message when absent); any secret → `credential` → `block`.
 - Registry names `presidio`, `ggshield`; both lazy-import (no MLX, optional deps only when selected).
 - `docs/bench/BASELINES.md`: table per set with `always_allow`, `always_block`, `tier1`, `presidio`, `ggshield`,
   `policy_oracle`; a paragraph on what each misses (by category slice), and the gate-2 bar: "a model must beat
-  `tier1` and `always_allow` on accuracy on `test` and `test_ood`".
+  `tier1` and `always_allow` on accuracy on final `test` and `test_ood` (scored after candidate freeze in P3-01)".
 
 ## Definition of done
 
@@ -43,6 +44,9 @@ the first baseline table.
 - [ ] Both adapters run with `--limit 100` in < 2 min on a laptop
 
 ## Automated tests
+
+- Both adapters accept realistic policies without synthetic title lookup; unsupported cases and external API
+  use are explicit in reports. ggshield receives fictional benchmark data only, never tester payloads.
 
 - `warda/bench/tests/test_presidio_decider.py` (`pytest.importorskip("presidio_analyzer")`): PESEL recognizer
   fires on a valid PESEL and not on an invalid one; mapping to category.

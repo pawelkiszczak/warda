@@ -21,9 +21,11 @@ decision. ADR-0002 deferred the licence/release form (open model? dataset only?)
 
 ## Deliverables
 
-- `docs/gates/GATE4.md`: criteria made numeric here from the shadow data (default bar: false-alarm rate ≤ 5 % of
-  non-allow decisions, p95 within ADR-0005, ≥ 3 real catches across testers confirmed by the tester as "would
-  have leaked"); numbers from `week-4.md`; PASS/FAIL; approvers (coordinator, tools owner, GDPR person, one
+- `docs/gates/GATE4.md`: criteria frozen before external tester observation in P5-02 (false-alarm rate ≤ 5 % of
+  reviewed non-allow decisions, at least 100 reviewed non-allow decisions overall with a prespecified random
+  review sample and coverage per tester; p95 histogram-bin upper bound within ADR-0005; ≥ 3 real catches
+  confirmed by testers as "would have leaked"). Insufficient evidence is INCONCLUSIVE, not PASS; numbers from
+  `week-4.md`; PASS/FAIL/INCONCLUSIVE; approvers (coordinator, tools owner, GDPR person, one
   tester).
 - ADR-0002 updated to `accepted` with the decision on: code (stays Apache-2.0), dataset (`data/` publication:
   yes/no, licence), weights (publish/hold, licence), model card requirements, and what the public README claims
@@ -36,10 +38,13 @@ decision. ADR-0002 deferred the licence/release form (open model? dataset only?)
 
 - [ ] GATE4.md merged with approvers and date; ADR-0002 accepted
 - [ ] If PASS: `v0.1.0` tag exists, release has the model asset, installer from a clean machine installs that
-      tag; if FAIL: the stop/continue decision and next-phase outline are in GATE4.md
+      tag; if FAIL or INCONCLUSIVE: the stop/continue decision and next-phase outline are in GATE4.md
 - [ ] Tester logs deleted; confirmation from each tester recorded
 
 ## Automated tests
+
+- Gate calculator rejects undefined rates, inadequate review counts, latency overflow and mixed unfrozen
+  versions; it uses the precommitted protocol, not thresholds selected from the observed results.
 
 - `scripts/tests/test_release_checklist.py`: every checklist item in `RELEASE.md` is a `- [x]` after release
   (parsed; test is skipped unless `WARDA_RELEASE=1`).

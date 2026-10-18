@@ -24,10 +24,19 @@ action.
 
 ## Deliverables
 
-- `warda/guard/bands.py`: `@dataclass Bands: allow_min: dict[str, float]` (per destination class: minimum
+- Fit on predicted-allow calibration items only. Require at least 100 accepted calibration items per class
+  for a fitted threshold; otherwise disable automatic model allow for that class (`allow_min = null` meaning
+  deny-and-continue). No feasible threshold also disables allow. Report n, empirical error, coverage and a
+  binomial confidence interval; the observed target is not a guaranteed population error bound.
+- Different class score distributions need not yield numerically ordered thresholds. Enforce the specified
+  per-class error targets, not a presumed threshold order. Apply identical policy/session semantics during
+  calibration and evaluation; fit only on cal, never on the gate set.
+
+- `warda/guard/bands.py`: `@dataclass Bands: allow_min: dict[str, float | None]` (per destination class: minimum
   calibrated confidence to let a model `allow` stand), `escalate_after_consecutive: int = 3`,
   `escalate_after_total: int = 20`; `apply(bands, action, confidence, dest_class, session: SessionState) ->
-  tuple[str, str]` (final action, reason code): model `allow` below `allow_min[dest_class]` becomes `block` with
+  tuple[str, str]` (final action, reason code): model `allow` with disabled threshold or below `allow_min[dest_class]`
+  becomes `block` with
   reason `uncertain_allow` (deny-and-continue); model `redact`/`block` stand; `ask_user` stands; after
   `escalate_after_consecutive` consecutive non-allow decisions in a session or `escalate_after_total` total, the
   next non-allow becomes `ask_user` with reason `escalated`. Tier-1 `credential` blocks bypass bands.
@@ -35,13 +44,13 @@ action.
   confidences), fit `allow_min` per class as the smallest threshold with observed error on allowed items ≤ target
   (`--target-error public=0.01 saas=0.02 llm=0.02 client=0.02 internal=0.05` defaults); writes `bands.json`;
   prints coverage per class.
-- Config: `[bands] file = "bands.json"` (P2-03 loader extended; absent → defaults `allow_min = 0.9` for public,
-  0.8 others).
+- Config: `[bands] file = "bands.json"` (P2-03 loader extended; absent → automatic model allow disabled until
+  calibrated).
 - Service: `SessionState` keyed by `agent.session` with the two counters, kept in memory, expired after 8 h.
 
 ## Definition of done
 
-- [ ] `fit_bands` on `cand-v1`'s cal report yields `allow_min["public"] ≥ allow_min["internal"]`
+- [ ] `fit_bands` reports support, error and coverage per class; no unsupported class silently allows
 - [ ] On `test.jsonl` with bands applied, `false_block_rate` increases by ≤ 3 pts while `leak_recall_public`
       increases (report both in the PR)
 - [ ] Fourth consecutive deny in one session returns `ask_user` with reason `escalated`
@@ -50,7 +59,8 @@ action.
 
 - `warda/guard/tests/test_bands.py`: each rule in `apply`; counter reset on allow; expiry; credential bypass.
 - `warda/guard/tests/test_fit_bands.py`: on a synthetic report with known confidences/errors the fitted threshold
-  equals the hand-computed value; empty class → default.
+  equals the hand-computed value; empty/insufficient-support class → allow disabled; tied confidences, no feasible
+  threshold and zero coverage.
 
 ## Documentation
 
@@ -60,7 +70,8 @@ action.
 ## Manual test (human, before the PR)
 
 1. `python -m warda.guard.fit_bands --report /tmp/cal/report.json --out /tmp/bands.json` → prints per-class
-   thresholds and coverage; thresholds non-decreasing from internal → public.
+   thresholds and coverage; support/error/coverage and fallback reasons are present per class; numerical ordering is
+   not assumed.
 2. With the service in enforce mode and a fake decider that always returns `allow` at 0.5 (`--decider
    fake:allow:0.5` debug flag in `serve`), send 4 payloads to `public_repo` → responses: block, block, block,
    ask_user.

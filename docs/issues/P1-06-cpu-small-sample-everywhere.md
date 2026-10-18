@@ -1,6 +1,6 @@
 +++
 id = "P1-06"
-title = "Every script runs on CPU with a small-sample flag; shared-machine job queue"
+title = "CPU smoke paths with explicit platform limits; shared-machine job queue"
 labels = ["phase:1", "team:tools", "type:infra"]
 milestone = "Phase 1 — Data and trials (weeks 2–6)"
 depends_on = ["P0-01"]
@@ -23,6 +23,10 @@ instead of first-come. Flags are inconsistent today: `pii_gen` has `--limit`, `b
 - Out of scope: changing algorithms.
 
 ## Deliverables
+
+- SMOKE.md separates portable CPU tools, MLX-on-Mac-only training, and external-model tasks. A skipped
+  unsupported platform is not reported as executed/passed. Do not implement a new training backend in this task.
+  Queue and model-generation requirements remain explicit per command.
 
 - `docs/dev/SMOKE.md`: table `Script | Smoke command (CPU, < 2 min) | Needs (Ollama / MLX / fastText model)`; every
   script listed; `scripts/smoke_all.sh` runs the subset that needs nothing external and exits non-zero on any

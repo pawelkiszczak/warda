@@ -3,7 +3,7 @@ id = "P1-10"
 title = "Handwritten realistic set v0: schema, authoring guide, first 50 items"
 labels = ["phase:1", "team:labelling", "type:data", "gate:3"]
 milestone = "Phase 1 — Data and trials (weeks 2–6)"
-depends_on = ["P0-03", "P0-04", "P1-08"]
+depends_on = ["P0-03", "P0-04", "P1-08", "P1-01", "P0-06"]
 estimate_hours = 8
 hardware = "laptop"
 github_issue = 20
@@ -21,6 +21,10 @@ chat, search queries and prompts — with fictional people/companies — under t
 - Out of scope: reaching 300 (P3-04).
 
 ## Deliverables
+
+- Mark v0 as development-only. Add `case_id`/`twin_of`, protected-span annotations or adjudicated accepted safe
+  rewrites for redact cases. Human labels establish whether the rewritten payload is safe under that policy;
+  merely removing one identifier is insufficient for mosaic cases.
 
 - Schema (`docs/data/HANDWRITTEN.md`, validated by `warda/bench/sets.py`): JSONL rows `id` (`hw-000001`),
   `language`, `channel` (from `warda.schema.CHANNELS`), `destination` (12 ids), `policy_id` (P1-08 ids),

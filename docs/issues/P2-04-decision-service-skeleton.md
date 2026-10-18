@@ -25,6 +25,20 @@ same interface.
 
 ## Deliverables
 
+- Log schema also includes stable `reason_code`, `enforced`, decider name/version, policy/config/model hashes
+  and optional tester ID. Human-readable reason text and arbitrary agent fields are not exported. These fields
+  support reproducible gate-4 reports without payload storage.
+
+- The public HTTP API always uses the configured policy; callers cannot override it. `Service` receives a
+  `Config`/shared `Policy` at construction. Benchmarks instantiate an isolated service per policy (including
+  synthetic policies), with disposable logs and reset session state; never reconfigure a running user service.
+- A deterministic non-allow requirement cannot become allow through the model or bands. Credentials always
+  block. A deterministic redact may be strengthened to block/ask by contextual analysis; contextual block/ask
+  cannot be weakened to redact. Redact with missing/unsafe spans becomes block before enforcement.
+- Validate non-JSON, invalid enums, malformed responses and timeouts at boundaries. Hooks determine failure
+  mode from validated local configuration, even when the service is unreachable; `serve --mode` overrides must
+  agree with the hook mode or startup/doctor refuses the mismatch.
+
 - API (`docs/service/API.md`), request `POST /v1/decide` JSON: `{"channel": str, "destination": str|null,
   "target": {"scheme": str, "value": str}|null, "payload": str, "task": str|null, "language": "pl"|"en"|null,
   "agent": {"name": str, "session": str|null, "tool": str|null}}` — exactly one of `destination` / `target`
@@ -36,8 +50,10 @@ same interface.
   trust boundary stated in the doc).
 - `warda/service/decider.py`: `class Service` holding `Config`, the active `Decider`, and `decide(req) ->
   Response`; pipeline: tier-1 `detect` → if `classify` gives `credential` → `block` with confidence 1.0, no model
-  ever; else category from the active decider (phase 2: `Tier1Decider`) → action via `gold_action(policy, category,
-  dest)` → `redacted_payload` when `redact`; `reason` is a one-line template in the config language ("Zablokowano:
+  ever; else deterministic PII category → policy-table action (unsupported exceptions → `ask_user`);
+  otherwise active decider result. P3-03 adds contextual decisions under the same precedence.
+  Produce `redacted_payload` only for a safe deterministic rewrite; `reason` is a one-line template in the config
+  language ("Zablokowano:
   dane uwierzytelniające (API_KEY) → miejsce docelowe: public_repo").
 - Shadow log `warda/service/log.py`: one JSON line per decision to `log.path`: `ts`, `decision_id`, `agent`,
   `channel`, `destination`, `action`, `confidence`, `category`, `tier1_kinds`, `payload_sha256`, `payload_chars`,

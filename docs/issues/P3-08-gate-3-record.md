@@ -20,7 +20,7 @@ Evidence: `docs/bench/COMPARISON.md`.
 
 ## Deliverables
 
-- `docs/gates/GATE3.md`: same structure as GATE2; the `service:` decider row is the one judged (deployed path);
+- `docs/gates/GATE3.md`: same structure as GATE2; the `service:isolated` decider row is the one judged (deployed path);
   slices by tier and language reported even though the gate is global; if FAIL, remedy chosen among: refit
   bands (P3-02), more handwritten data in the failing slice (P3-04 follow-up), model change (P3-01 follow-up),
   stop.
@@ -40,4 +40,4 @@ Evidence: `docs/bench/COMPARISON.md`.
 
 ## Manual test (human, before the PR)
 
-1. Second person recomputes `leak_recall_public` and `false_block_rate` from the linked report with `jq`.
+1. Second person recomputes `leak_recall_public` and `unnecessary_intervention_rate` from the linked report with `jq`.

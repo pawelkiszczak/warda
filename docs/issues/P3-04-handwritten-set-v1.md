@@ -3,7 +3,7 @@ id = "P3-04"
 title = "Handwritten set v1: 300 items, double-labelled, adjudicated"
 labels = ["phase:3", "team:labelling", "type:data", "gate:3"]
 milestone = "Phase 3 — Decision training and gates 2–3 (weeks 10–13)"
-depends_on = ["P1-10"]
+depends_on = ["P1-10", "P3-01"]
 estimate_hours = 8
 hardware = "laptop"
 github_issue = 31
@@ -12,16 +12,23 @@ github_issue = 31
 ## Context
 
 Gate 3 is measured on ~300 realistic hand-written items (plan §4, §5 phase 3). P1-10 fixed the schema, guide and
-tooling and delivered 50. This issue is the authoring and labelling campaign to reach 300 with the same quality
+tooling and delivered 50 development items. This issue is the independent authoring and labelling campaign for 300
+final items with the same quality
 bar. Estimate is 8 h of coordination; authoring hours are spread across 3–5 labellers (≈ 10 items/h each).
 
 ## Scope
 
-- 250 more items (≥ 40 % must be tier 2/3, every leaking item with a twin), two labels each, adjudication, kappa
+- 300 new held-out items (v0 remains development-only; none of its items/twins are reused) (≥ 40 % must be tier 2/3,
+  every leaking item with a twin), two labels each, adjudication, kappa
   report, freeze as `v1`.
 - Out of scope: new channels/policies.
 
 ## Deliverables
+
+- Freeze v1 IDs, policy versions, paired-case groups and file hashes before candidate evaluation. No v0
+  payloads, twins or paraphrases in v1; authors/bench owner record the overlap review. Protected spans or
+  accepted safe rewrites are adjudicated for redact cases so P0-06 can verify actual disclosure prevention.
+  Cases without a provably safe rewrite require deny/ask to count as caught.
 
 - `data/handwritten/v1.jsonl` (300 items; split into `v1-a.jsonl`, `v1-b.jsonl` if > 500 KB — loader accepts a
   glob), `data/handwritten/v1-agreement.json` from `warda/label/export.py`.

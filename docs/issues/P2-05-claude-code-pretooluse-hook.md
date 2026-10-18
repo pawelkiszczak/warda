@@ -22,6 +22,11 @@ settings can make hooks mandatory. P1-09 captured the exact event JSON.
 
 ## Deliverables
 
+- Enforce mode: `redact` with null/unsafe replacement, unsupported rewrite capability, malformed service
+  response or uninspectable outbound payload denies execution with a reason. Never execute the original payload
+  as a fallback. Shadow mode leaves the call unchanged and records the limitation. Read failure mode from
+  validated local config; invalid config fails closed. Preserve unrelated hooks during install/uninstall.
+
 - `warda/hooks/claude_code.py`: reads the `PreToolUse` JSON from stdin; `classify_tool(tool_name, tool_input)`
   (P2-03) → if `None`, exit 0 with no output (not outbound); else build the `/v1/decide` request (`agent.name =
   "claude-code"`, `session` from the event's session id, `task` from the event's last user message if present in
@@ -49,9 +54,13 @@ settings can make hooks mandatory. P1-09 captured the exact event JSON.
 
 ## Automated tests
 
+- Null redacted payload, malformed service response, uninspectable outbound action and missing/invalid config;
+  enforce denies, shadow records supported limitations without changing the call. Test platform rewrite fallback.
+
 - `warda/hooks/tests/test_claude_code.py`: feed each fixture event from `warda/guard/tests/fixtures/tool_calls/`
   with a fake service (monkeypatch `client.decide`) returning each action → assert exact stdout JSON / empty
-  output / exit code; unreachable service in both modes; non-JSON stdin → exit 0 silently; `install`/`uninstall`
+  output / exit code; unreachable service in both modes; non-JSON stdin → deny in enforce, diagnostic and pass-through
+  in shadow; `install`/`uninstall`
   idempotence on a temp settings file with pre-existing unrelated hooks preserved.
 
 ## Documentation

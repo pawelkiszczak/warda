@@ -3,7 +3,7 @@ id = "P1-03"
 title = "Synthetic decision data round 2: gap-driven case kinds"
 labels = ["phase:1", "team:data-decision", "type:data", "gate:2"]
 milestone = "Phase 1 — Data and trials (weeks 2–6)"
-depends_on = ["P0-05", "P1-02"]
+depends_on = ["P0-05", "P1-02", "P1-07", "P1-06"]
 estimate_hours = 8
 hardware = "strong"
 github_issue = 13
@@ -23,6 +23,10 @@ are three fixed tables.
 
 ## Deliverables
 
+- Add a development-only OOD policy and `dev_ood` items from dev case IDs; keep final `local_only` policy and
+  test case IDs untouched for `test_ood`. Document allowed paired reuse within dev/dev_ood and test/test_ood;
+  no case/payload crosses train, development, calibration and final-test partitions.
+
 - `docs/data/GAPS-round2.md`: table `Gap | Evidence (gate-1 error type / review finding) | Change | Target count`.
   Must include at minimum: (a) mosaic payloads spread over two sentences; (b) client-codename + deal facts;
   (c) policies with an explicit exception clause ("client X data may go to provider Y") — a 5th policy
@@ -37,12 +41,17 @@ are three fixed tables.
 
 ## Definition of done
 
+- [ ] Gate 1 failure remediation may proceed, but no failed dataset is promoted for downstream training.
+
 - [ ] Every gap in the table has a kind/channel/policy in code and ≥ its target count accepted
 - [ ] `test_pii_gen.py` extended and green; existing cases regenerate identically for unchanged kinds (seeded)
 - [ ] New build keeps split integrity: no `case_id` or payload text shared across train and dev/cal/test
       (reuse the check described in `pretrain/README.md` "Checks after the build" as a test)
 
 ## Automated tests
+
+- dev_ood uses development case IDs and its own held-out policy, never local_only; no train/development/cal/final
+  partition overlap. Final paired test/test_ood reuse is deliberate and recorded in the manifest.
 
 - `pretrain/harness/tests/test_pii_gen.py`: `policy_text("exception", lang)` contains the exception clause and
   `action_for("exception", …)` follows it; declension helper returns `z Zbigniewem Kowalskim` for the nominative

@@ -3,7 +3,7 @@ id = "P4-06"
 title = "Portable CPU backend and latency benchmark on ordinary laptops"
 labels = ["phase:4", "team:tools", "type:feature"]
 milestone = "Phase 4 — Integrations (weeks 13–16)"
-depends_on = ["P3-03", "P0-07"]
+depends_on = ["P3-03", "P0-07", "P3-07", "P3-08"]
 estimate_hours = 8
 hardware = "laptop"
 github_issue = 41
@@ -25,9 +25,9 @@ pass of `model.py` is the boring, reliable path.
 
 ## Deliverables
 
-- `pyproject.toml`: optional group `cpu = ["torch>=2.x"]` (CPU wheels; documented `uv sync --group cpu`); MLX
-  stays in the default deps on macOS only via a marker `mlx; sys_platform == 'darwin'` (same for `mlx-lm`), so
-  Linux installs work.
+- `pyproject.toml`: optional group `cpu = ["torch>=2.x"]` (CPU wheels; documented `uv sync --group cpu`); Reuse P0-01
+  platform markers/lazy imports; verify Linux/Windows installs without MLX.
+  This backend provides inference only, not a portable training implementation.
 - `warda/service/model_torch.py`: `TorchDecider(Decider)` with identical outputs to `MlxDecider` (|Δp| < 1e-4
   on 100 items); config `kind = "torch"`.
 - `python -m warda bench-latency [--n 50] [--decider mlx|torch|tier1] [--state-tokens 1000]`: p50/p95 ms,
@@ -37,6 +37,9 @@ pass of `model.py` is the boring, reliable path.
 
 ## Definition of done
 
+- [ ] Before this phase-4 work starts, Gate 2 and Gate 3 records state PASS for the candidate version;
+      closing a gate issue with FAIL does not authorise progression. A failed gate requires a new approved PASS.
+
 - [ ] Parity test passes; `torch` backend serves the P3-03 DoD payloads on a Linux machine
 - [ ] `LATENCY.md` has ≥ 4 rows; at least one 8 GB machine meets the ADR-0005 budget, or ADR-0005 is amended
       with the measured numbers and the reason
@@ -45,7 +48,8 @@ pass of `model.py` is the boring, reliable path.
 ## Automated tests
 
 - `warda/service/tests/test_model_torch.py` (`pytest.importorskip("torch")`): `tiny` random weights saved from
-  MLX (fixture generated on macOS and committed as a tiny safetensors < 200 KB under `warda/service/tests/fixtures/`)
+  MLX (fixture generated on macOS and committed as a tiny safetensors < 16 MB (the 32k × 64 embedding alone is about 4
+  MB in fp16) under `warda/service/tests/fixtures/`)
   → torch forward matches the stored MLX reference logits within 1e-4; decide path.
 - `warda/tests/test_platform_deps.py`: on Linux, `import warda.service.app` does not import `mlx`.
 

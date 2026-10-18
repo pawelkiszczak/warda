@@ -3,7 +3,7 @@ id = "P1-09"
 title = "Hook mechanism survey for all target agents"
 labels = ["phase:1", "team:tools", "type:docs"]
 milestone = "Phase 1 — Data and trials (weeks 2–6)"
-depends_on = []
+depends_on = ["P0-01"]
 estimate_hours = 5
 hardware = "laptop"
 github_issue = 19
@@ -24,6 +24,10 @@ timeout unless `onFailure: "block"`). Phase 2 and 4 integrations need one verifi
 
 ## Deliverables
 
+- Capture only in a disposable repo/session using authored fictional fixtures; do not install on normal work
+  sessions. Truncation is a size limit, not sanitisation. Drop authentication headers, environment values and
+  unrelated event fields; remove capture hook and delete local capture after fixture review.
+
 - Per agent (Claude Code, Codex CLI, Cursor, omp, OpenCode, Qwen Code, Gemini CLI, Orca): config file path and
   format; event names that fire before an outbound action (tool call, shell command, MCP call, web search); exact
   stdin/stdout JSON for a `PreToolUse`-equivalent, with the fields to deny, to rewrite input, to ask the user;
@@ -31,8 +35,10 @@ timeout unless `onFailure: "block"`). Phase 2 and 4 integrations need one verifi
   organisation can enforce the hook; how the tool name/arguments of `git commit`, `git push`, `gh pr create`,
   `gh issue comment`, `curl`, web search and MCP tools appear in the payload (one captured sample each, with any
   real paths replaced by placeholders); version tested.
-- A "capture" script `warda/hooks/capture.py` that, installed as a hook, appends the raw event JSON to
-  `~/.warda/capture.jsonl` with payload fields truncated to 200 chars — used to produce the samples and reused by
+- A "capture" script `warda/hooks/capture.py` that, installed as a hook, requires explicit `--synthetic-fixtures`
+  opt-in and appends allowlisted event metadata plus fictional
+  fixture payloads to `~/.warda/capture.jsonl` (0700 directory, 0600 file), strings capped at 200 chars — used to
+  produce the samples and reused by
   integration issues as a debugging aid.
 - Comparison table and a "Mechanism per agent for phase 4" row (`hook` / `extension` / `plugin` / `unsupported:
   reason`).
@@ -44,6 +50,9 @@ timeout unless `onFailure: "block"`). Phase 2 and 4 integrations need one verifi
 - [ ] `capture.py` never writes more than 200 chars of any string field
 
 ## Automated tests
+
+- Capture refuses absent synthetic opt-in; nested credential/environment fields are omitted, permissions are
+  private, and cleanup removes only the capture hook it installed.
 
 - `warda/hooks/tests/test_capture.py`: truncation of nested string fields; append semantics; writes nothing if
   stdin is not JSON (exit 0, so the agent is never blocked by the capture hook).

@@ -3,7 +3,7 @@ id = "P1-05"
 title = "Pilot trainings: model-size sweep and a CPU-runnable mini config"
 labels = ["phase:1", "team:model", "type:experiment"]
 milestone = "Phase 1 — Data and trials (weeks 2–6)"
-depends_on = ["P1-04"]
+depends_on = ["P1-04", "P0-06", "P1-03", "P0-07"]
 estimate_hours = 8
 hardware = "strong"
 github_issue = 15
@@ -27,9 +27,9 @@ configs exist, and no config runs on CPU for tests.
 - `pretrain/configs/{tiny,xs,s,m}.json` loaded by `train.py --config PATH` (fields mirror `model.Config`);
   `--config` defaults to `s.json` to preserve current behaviour.
 - `train.py --tokens 1e5 --config pretrain/configs/tiny.json --name smoke` finishes on CPU-only MLX in < 2 min.
-- `sft.py --data pretrain/work/harness_pii/items --extra-eval test_ood=pretrain/work/harness_pii/items/test_ood.jsonl`
-  used for each size; results into `docs/model/SWEEP-1.md`: table `size | params | active | tokens | SFT test
-  acc | test_ood acc | ECE | coverage@1% | ms/decision (MLX, M-series)`; MLflow run names listed.
+- `sft.py --data pretrain/work/harness_pii/items --extra-eval dev_ood=pretrain/work/harness_pii/items/dev_ood.jsonl`
+  used for each size; results into `docs/model/SWEEP-1.md`: table `size | params | active | tokens | SFT dev
+  acc | dev_ood acc | ECE | coverage@1% | ms/decision (MLX, M-series)`; MLflow run names listed.
 - Bench integration: `warda/bench/deciders/sft_run.py` registering `sft:<run-name>` that loads
   `pretrain/work/runs/<run>/` and uses `pretrain/sft.py`'s `predict` + `calibration.json` (imports MLX; registered
   lazily so `warda.bench.run --help` works without MLX).
@@ -39,7 +39,7 @@ configs exist, and no config runs on CPU for tests.
 - [ ] Three sizes trained and scored; `SWEEP-1.md` filled; ADR-0001's rule applied → a chosen size recorded in
       the ADR as "interim"
 - [ ] `tiny` smoke documented and used by the new tests
-- [ ] `warda.bench.run --decider sft:<run> --set …/test.jsonl --limit 200` works and reports ECE/coverage
+- [ ] `warda.bench.run --decider sft:<run> --set …/dev.jsonl --limit 200` works and reports ECE/coverage
 
 ## Automated tests
 

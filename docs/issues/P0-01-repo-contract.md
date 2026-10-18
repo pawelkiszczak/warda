@@ -26,6 +26,15 @@ need (actions, categories, destinations, channels) currently live only in `pretr
 
 ## Deliverables
 
+- Make non-ML tooling installable on supported Linux/Windows laptops now: platform-mark MLX/mlx-lm, lazy-load
+  MLX-only modules, and skip MLX tests by capability. Run a non-ML smoke on Linux and Windows. This does not
+  promise portable training; document MLX training as Apple-silicon-only until a training port is separately scoped.
+
+- Shared `Policy` dataclass in `warda/schema.py`: `id`, `language`, `text`, `table` (category → destination
+  class → action), `exceptions` (list of text clauses). Shared `DecisionInput`: `payload`, `channel`,
+  `destination`, `policy: Policy`, `language`, `task: str | None`, `provenance: list[str]`. No gold fields.
+  Runtime boundaries validate these fields; TypedDict annotations alone are not validation.
+
 - `AGENTS.md` sections, in order: "Run" (`uv sync --locked`, `uv run pytest -q`, `uv run pre-commit run
   --all-files`, `WARDA_SLOW=1 uv run pytest -q` for slow tests); "Layout" (`warda/` product code with one line per
   subpackage: `guard`, `service`, `hooks`, `bench`, `label`, `schema.py`, `cli.py`; `pretrain/` research; `data/`
@@ -41,7 +50,8 @@ need (actions, categories, destinations, channels) currently live only in `pretr
   "block")`, `CATEGORIES`, `DEST_CLASSES = ("internal", "client", "llm", "saas", "public")`, `DEST_CLASS: dict[str,
   str]` (the 12 destination ids from `pii_gen.DEST_CLASS`), `CHANNELS: tuple[str, ...]` (the 10 outbound channel
   ids), `INBOUND_CHANNELS` (3 ids), `LANGUAGES = ("pl", "en")`, and `class Decision(TypedDict)`: `action: str`,
-  `confidence: float`, `reason: str`, `redacted_payload: str | None`. `pii_gen.py` imports `ACTIONS`, `CATEGORIES`,
+  `confidence: float`, `reason: str`, `redacted_payload: str | None`, `category: str | None`. `pii_gen.py` imports
+  `ACTIONS`, `CATEGORIES`,
   `DEST_CLASS` and `DEST_CLASSES` (replacing its `CLASSES`; `_rule` and `CLASS_TEXT` keep working on the same
   five strings) from `warda.schema` and deletes its own copies
   (`grep -n "^ACTIONS\|^CLASSES\|^DEST_CLASS\|^CATEGORIES" pretrain/harness/pii_gen.py` returns nothing after).

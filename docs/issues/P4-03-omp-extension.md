@@ -3,7 +3,7 @@ id = "P4-03"
 title = "omp extension"
 labels = ["phase:4", "team:tools", "type:feature"]
 milestone = "Phase 4 — Integrations (weeks 13–16)"
-depends_on = ["P2-05", "P3-03"]
+depends_on = ["P2-05", "P3-03", "P3-07", "P3-08"]
 estimate_hours = 5
 hardware = "laptop"
 github_issue = 38
@@ -36,6 +36,11 @@ Integration contract (shared by P4-01 … P4-05):
 
 ## Deliverables
 
+- Enforce mode: `redact` with null/unsafe replacement, unsupported rewrite capability, malformed service
+  response or uninspectable outbound payload denies execution with a reason. Never execute the original payload
+  as a fallback. Shadow mode leaves the call unchanged and records the limitation. Read failure mode from
+  validated local config; invalid config fails closed. Preserve unrelated hooks during install/uninstall.
+
 - Extension that intercepts outbound tool calls (same tool-shape list as `classify_tool`: git commit/push, gh,
   curl/http, web search, MCP, publish), posts to `/v1/decide` with `agent.name = "omp"`, and applies the decision
   with omp's veto/rewrite API; shadow mode logs only.
@@ -43,12 +48,18 @@ Integration contract (shared by P4-01 … P4-05):
 
 ## Definition of done
 
+- [ ] Before this phase-4 work starts, Gate 2 and Gate 3 records state PASS for the candidate version;
+      closing a gate issue with FAIL does not authorise progression. A failed gate requires a new approved PASS.
+
 - [ ] Three-step scenario passes in omp
 - [ ] Extension load adds no measurable startup delay (< 100 ms, measured with omp's timing output or a
       stopwatch over 5 starts)
 - [ ] Install/uninstall idempotent
 
 ## Automated tests
+
+- Null redacted payload, malformed service response, uninspectable outbound action and missing/invalid config;
+  enforce denies, shadow records supported limitations without changing the call. Test platform rewrite fallback.
 
 - `warda/hooks/tests/test_omp.py`: the Python helper's install/uninstall; if the extension is JS/TS, a Bun/Node
   test file next to it (Biome-checked, pre-commit `biome-check` `files` pattern extended to

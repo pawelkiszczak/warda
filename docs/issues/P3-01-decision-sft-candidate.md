@@ -3,7 +3,7 @@ id = "P3-01"
 title = "Decision fine-tuning on harness data (+ Jev-style joint mix) → candidate model"
 labels = ["phase:3", "team:model", "type:experiment", "gate:2"]
 milestone = "Phase 3 — Decision training and gates 2–3 (weeks 10–13)"
-depends_on = ["P2-01", "P2-02", "P0-06"]
+depends_on = ["P2-01", "P2-02", "P0-06", "P1-11"]
 estimate_hours = 8
 hardware = "strong"
 github_issue = 28
@@ -23,10 +23,19 @@ per-type temperature (the current `sft.py` rule).
 
 ## Deliverables
 
+- Development runs must not automatically evaluate final test splits. Add an explicit development-only
+  evaluation selection if needed in `sft.py`; final test/test_ood run only after candidate freeze. Recompute
+  frozen trivial/tier-1 baselines on final sets for the gate-2 comparison (P1-11 reports development results).
+
+- Select the candidate using dev/dev_ood only, then freeze its checkpoint/config hash before final test and
+  test_ood evaluation. Handwritten v0 is development material. A failed final test triggers a new versioned
+  evaluation round with fresh held-out cases/policies, not repeated selection against the same test scores.
+
 - `pretrain/sft/mix_harness.py`: builds `work/sft_harness/{harness_only,joint,joint_x3}/{train,dev,cal,test}.jsonl`
   from `work/harness_pii/items/` and `work/sft_jev/joint/`; `--harness-copies`, `--seed`, `--limit`; `stats.json`
   with counts per family/type/language.
-- Three `sft.py` runs with `--extra-eval test_ood=…/test_ood.jsonl --extra-eval handwritten=data/handwritten/v0.jsonl`
+- Three `sft.py` development runs with `--extra-eval dev_ood=…/dev_ood.jsonl --extra-eval
+  handwritten=data/handwritten/v0.jsonl`
   (handwritten converted to item format by `warda/bench/sets.py to_items()` — add this function: renders the
   state with the P1-08 policy text, question "action", 4 options in the item's language).
 - `docs/model/SFT-candidate.md`: table `run | test acc | test_ood acc | handwritten acc | ECE | coverage@1% |

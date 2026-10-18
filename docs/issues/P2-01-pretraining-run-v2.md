@@ -3,7 +3,7 @@ id = "P2-01"
 title = "Pretraining run v2 on the extended corpus at the chosen size"
 labels = ["phase:2", "team:model", "type:experiment"]
 milestone = "Phase 2 — Base training and service skeleton (weeks 6–10)"
-depends_on = ["P1-04", "P1-05", "P0-07"]
+depends_on = ["P1-04", "P1-05", "P0-07", "P1-06"]
 estimate_hours = 8
 hardware = "strong"
 github_issue = 22
@@ -24,7 +24,7 @@ one machine; the issue is about reproducibility and the record, not the hours.
 ## Deliverables
 
 - `pretrain/work/runs/<name>/` with `config.json`, `metrics.jsonl`, final checkpoint, `ckpt/` for resume; run
-  launched through `scripts/queue.sh` on the shared machine (or the rented GPU per ADR-0005).
+  launched through `scripts/queue.sh` on the shared machine (or rented Apple-silicon Mac per ADR-0005).
 - `docs/model/PRETRAIN-v2.md`: config, corpus manifest hash, tokens/s, wall time, loss curve summary (step →
   val loss per source from `val_<source>.bin`), router balance stats (from `metrics.jsonl`), comparison row with
   the 1B reference, checkpoint path and SHA-256.

@@ -12,17 +12,24 @@ github_issue = 5
 ## Context
 
 Plan §4 asks for one owner per team, a sign-up table, a hardware inventory and a weekly 30-minute meeting with
-decisions written into the repo. The sign-up table lives in `pretrain/HARNESS_DECIDER_PLAN.md` §4; everything else
-has no home yet.
+decisions written into the repo. The sign-up table lives in `pretrain/HARNESS_DECIDER_PLAN.md` §4. The project board
+(<https://github.com/users/pawelkiszczak/projects/2>) with its fields and views is created and filled by
+`scripts/issues_sync.py`, and the workflow is in `CONTRIBUTING.md`; what remains are the board settings the API
+cannot change and the team docs.
 
 ## Scope
 
-- GitHub Projects board linked to this repo, columns `Backlog`, `Ready`, `In progress`, `Review`, `Done`, with the
-  `phase:*` and `team:*` labels as board fields.
+- Board settings available only in the web UI: enable the built-in workflows "Item closed" → Status `Done` and
+  "Pull request merged" → Status `Done`; on the "Board" view show the Team and Hardware fields on cards.
 - `docs/team/OWNERS.md`, `docs/team/HARDWARE.md`, `docs/team/MEETINGS.md`.
 - Out of scope: choosing owners (done at the first meeting), Discord setup.
 
 ## Deliverables
+
+- Assign a GitHub assignee before moving an issue to In progress; team labels are not ownership. Record hands-on
+  effort separately from compute time, authoring/labelling person-hours and observation weeks. The catalogue
+  totals 271 estimated hours, including 122 tools hours; these are not the full project delivery duration.
+  Re-estimate affected tasks after contract corrections and record capacity by named owner; do not invent owners.
 
 - `docs/team/OWNERS.md`: table `Team | Owner | Deputy | Contact` for the 8 teams + GDPR person + trainer deputy; a
   line "Disputes on gold labels are settled per ADR-0004".
@@ -32,11 +39,14 @@ has no home yet.
 - `docs/team/MEETINGS.md`: cadence (weekly, 30 min), standing agenda (gate status, blocked issues, decisions to
   record), and the rule that every decision becomes an ADR (`docs/decisions/`) or a line in the relevant gate
   record.
-- Board URL recorded in `docs/issues/README.md` under a "Board" heading.
+- `CONTRIBUTING.md` "Project board" section checked against the live board; fix whichever is wrong.
 
 ## Definition of done
 
-- [ ] Board exists, all open issues appear on it with phase and team fields populated
+- [ ] Ready means prerequisites satisfied and scope reviewed, not merely dependency issues closed: gate
+      dependencies need a recorded PASS. No unassigned issue is moved to In progress.
+
+- [ ] Both built-in workflows enabled; closing a test issue moves its card to `Done`
 - [ ] The three team docs exist with headers filled; owner cells may be empty until the first meeting
 - [ ] `docs/issues/README.md` links the board
 
