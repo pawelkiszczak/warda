@@ -1,7 +1,7 @@
 name: tests
 
+# Runs only after merges to main; PRs are not gated on CI.
 on:
-  pull_request:
   push:
     branches: [main]
 
