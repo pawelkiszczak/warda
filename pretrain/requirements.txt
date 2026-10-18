@@ -1,0 +1,17 @@
+mlx>=0.32
+numpy
+tokenizers
+transformers
+huggingface_hub
+pyarrow
+zstandard
+xgboost
+scikit-learn
+datasketch
+requests
+mlx-lm>=0.31
+mlflow
+fasttext-wheel
+pytest
+starlette
+uvicorn

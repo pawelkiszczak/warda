@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quality dashboard</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/dashboard.css">
+<body>
+<header>
+  <h1>Labeling dashboard</h1>
+  <nav><a href="/">Label</a><a href="/dashboard">Dashboard</a><a href="/check">Check text</a></nav>
+  <span class="dash-tabs">
+    <button data-tab="auto" class="on">Automated metrics</button>
+    <button data-tab="human">Human labels</button>
+    <button data-tab="both">Both</button>
+  </span>
+  <span id="updated" class="muted"></span>
+</header>
+
+<main class="dash">
+  <section id="auto" class="dash-section">
+    <h2 class="section-title">Automated — computed for all <span id="n-items"></span> documents, no labels needed</h2>
+    <div class="tiles" id="auto-tiles"></div>
+    <div class="grid">
+      <div class="card wide"><h3>Loop score × multilingual score <small>each dot is a document; colour = origin; click to open it in the labeller</small></h3><div id="auto-scatter"></div></div>
+      <div class="card"><h3>Sample composition <small>SpeakLeash's own quality label per source; FineWeb by origin</small></h3><div id="auto-composition"></div></div>
+      <div class="card"><h3>Dominant language (top_lang)</h3><div id="auto-lang"></div></div>
+      <div class="card"><h3>Current cleaning step <small>pass / reason for rejection</small></h3><div id="auto-clean"></div></div>
+      <div class="card wide"><h3>Key metric distributions <small>stacked by origin; dashed line = median</small></h3><div id="auto-hists" class="small-multiples"></div></div>
+      <div class="card"><h3>Metric correlations <small>Spearman rank, all documents</small></h3><div id="auto-corr"></div></div>
+      <div class="card"><h3>Metric explorer <small>whole sample by SpeakLeash label</small></h3>
+        <label>Metric <select id="auto-metric"></select></label><div id="auto-explorer"></div></div>
+    </div>
+  </section>
+
+  <section id="human" class="dash-section" hidden>
+    <h2 class="section-title">Human — your labels (latest per document and labeller)</h2>
+    <div class="tiles" id="human-tiles"></div>
+    <div class="grid">
+      <div class="card wide"><h3>Progress by source <small>bar length = documents in the sample; colour = your label</small></h3><div id="human-progress"></div></div>
+      <div class="card"><h3>Label distribution</h3><div id="human-labels"></div></div>
+      <div class="card"><h3>Flags</h3><div id="human-flags"></div></div>
+      <div class="card"><h3>Your label × SpeakLeash label <small>rows = SpeakLeash, columns = you</small></h3><div id="human-confusion"></div></div>
+      <div class="card"><h3>Your label × current cleaning step</h3><div id="human-clean"></div></div>
+      <div class="card wide"><h3>Loop score × multilingual score, coloured by your label <small>grey = not labelled yet; click to open</small></h3><div id="human-scatter"></div></div>
+      <div class="card"><h3>Detectors vs your flags <small>AUROC of the automated score for the matching flag (0.5 = no signal)</small></h3><div id="human-detectors"></div></div>
+      <div class="card"><h3>Most predictive metrics <small>AUROC on labelled documents; bars centred at 0.5</small></h3><div id="human-auroc"></div></div>
+      <div class="card"><h3>Metric by your label <small>strip plot + median per label</small></h3>
+        <label>Metric <select id="human-metric"></select></label><div id="human-strip"></div></div>
+      <div class="card"><h3>Labelling pace <small>seconds per document in labelling order; line = rolling median of 20</small></h3><div id="human-pace"></div></div>
+      <div class="card wide"><h3>Agreement between labellers</h3><div id="human-kappa"></div></div>
+    </div>
+  </section>
+</main>
+<div id="tip" class="tip" hidden></div>
+<script src="/static/dashboard.js"></script>
+</body>
+</html>

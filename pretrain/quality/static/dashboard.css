@@ -1,0 +1,31 @@
+.dash{padding:14px;display:flex;flex-direction:column;gap:18px}
+.dash-tabs{display:flex;gap:6px;margin-left:auto}
+.dash-tabs button{background:#24465c;color:#d8edff;border:1px solid #3b6680;border-radius:6px;padding:5px 12px;cursor:pointer}
+.dash-tabs button.on{background:#d8edff;color:#172d3c}
+.muted{color:#9fb6c6;font-size:12px}
+.section-title{font-size:17px;margin:4px 0 10px;padding-left:10px;border-left:5px solid #4088b7}
+#human .section-title{border-left-color:#35865a}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+.tile{background:white;border:1px solid #d3dce2;border-radius:8px;padding:10px 12px}
+.tile b{display:block;font-size:24px;margin-top:2px}
+.tile span{color:#5a6b78;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.card{background:white;border:1px solid #d3dce2;border-radius:8px;padding:12px 14px;min-width:0}
+.card.wide{grid-column:1/-1}
+.card h3{margin:0 0 8px;font-size:15px}
+.card h3 small{display:block;font-weight:normal;color:#5a6b78;font-size:12px;margin-top:2px}
+.card svg{width:100%;height:auto;display:block;font:11px system-ui,sans-serif}
+.card label{font-size:13px}
+.card select{max-width:100%}
+.small-multiples{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.small-multiples .sm h4{margin:0;font-size:12px;font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;margin:4px 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.empty{color:#5a6b78;font-style:italic;padding:18px 0}
+.dot{cursor:pointer}
+.dot:hover{stroke:#000;stroke-width:1.5}
+.tip{position:fixed;pointer-events:none;background:#172d3c;color:white;font-size:12px;padding:6px 8px;border-radius:5px;max-width:360px;z-index:10;white-space:pre-line}
+table.mini{border-collapse:collapse;font-size:12px}
+table.mini td,table.mini th{padding:3px 8px;border-bottom:1px solid #eef2f5;text-align:right}
+table.mini th:first-child,table.mini td:first-child{text-align:left}
+@media (max-width:1000px){.grid{grid-template-columns:1fr}}

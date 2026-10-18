@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Warda: local data, environments and run artefacts stay out of git
+pretrain/work/
+.venv*/
+mlruns/
