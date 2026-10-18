@@ -1,11 +1,5 @@
 Warda
 Copyright 2026 Paweł Kiszczak and contributors. Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-This repository includes files from basal (https://github.com/pawelkiszczak/basal), licensed under the Apache License,
-Version 2.0, Copyright 2026 Remigiusz Kinas:
-
-  basal/__init__.py, basal/prompt.py   prompt format and letter readout of basal-1.0 (unchanged)
-  basal/examples/                      the 44 bundled decision examples, used as an evaluation set (unchanged)
-
 Training-data sources and their licences are listed in pretrain/README.md. No training data, model weights or generated
 datasets are included in this repository.

@@ -1,8 +1,8 @@
-# Design: Polish text-quality classifier (StyloMetrix + basal)
+# Design: Polish text-quality classifier
 
 Status: **design; not built.** Replaces the current quality filter in `data/build_tokens.py` (XGBoost on ~50 plain-Python
 features trained to imitate SpeakLeash's per-document `quality` label: accuracy 0.813, macro-F1 0.814, HIGH-F1 0.785).
-Intended for Phase B of `PLAN.md` (the ~5.5B-token corpus).
+Intended for the large-corpus pretraining stage.
 
 ## Why change the current filter
 
@@ -29,13 +29,10 @@ Intended for Phase B of `PLAN.md` (the ~5.5B-token corpus).
   punctuation 3.
 - **Speed:** **5.5 documents/s per process** on CPU (50 real passages, ~1,340 characters each). With ~8–10 processes,
   an estimated 40–50 documents/s (≈4M documents/day): fine for training sets, **too slow for corpus-wide scoring**
-  (Phase B needs to score ~20–30M candidate documents).
+  (the large-corpus stage needs to score ~20–30M candidate documents).
 - **Licence:** StyloMetrix and `pl_nask` are GPL-3.0, so they run in their own virtual environment as a separate
   process that reads and writes JSONL. Our Apache code never imports them; only numeric features cross the boundary
   [INFERENCE: not legal advice].
-- **basal as a judge:** measured earlier at ~5.7 questions/s (1.5B) and ~1.7 questions/s (4.5B) on ~1k-character
-  passages. Each question re-reads the text, so a 6-question rubric costs about 1 document/s on 1.5B: a teacher, not a
-  corpus filter.
 
 ## Architecture: an expensive teacher, a fast student
 
@@ -43,22 +40,18 @@ Intended for Phase B of `PLAN.md` (the ~5.5B-token corpus).
 flowchart LR
   subgraph Labels
     H[Human gold set 600–1000 docs]
-    B[basal-1.5B rubric on 30k docs\n4.5B on a 3k subset]
     S[Code-made negatives\ncorrupted twins of good docs]
     SL[SpeakLeash quality label\nweak, feature only]
   end
   subgraph Teacher features
     SM[StyloMetrix 172]
     CH[Cheap features ~50]
-    PPL[LM perplexity\nbasal-scratch 126M]
-    BJ[basal rubric probabilities]
+    PPL[LM perplexity\nscratch 126M]
   end
-  B --> T[Teacher model XGBoost\nquality score + HIGH/MEDIUM/LOW]
-  S --> T
+  S --> T[Teacher model XGBoost\nquality score + HIGH/MEDIUM/LOW]
   SM --> T
   CH --> T
   PPL --> T
-  BJ --> T
   T --> ST[Student XGBoost\ncheap + StyloMetrix-lite + perplexity]
   ST --> C[Corpus filter, ~thousands docs/s]
   H --> E[Evaluation and calibration only]
@@ -68,39 +61,44 @@ flowchart LR
 
 ### 1. What "high quality" means (fixed before labelling)
 
-Use the Bielik annotation scheme with explicit definitions, used both by human labellers and as basal question wording.
+Use the Bielik annotation scheme with explicit definitions, shared by human labellers and the rubric below.
 
 - **HIGH:** coherent, complete, correct Polish; informative or literary; little boilerplate.
 - **MEDIUM:** understandable but flawed: typos, colloquial, partly boilerplate, fragmentary.
 - **LOW:** spam, lists of links or keywords, broken encoding or OCR, machine-generated or garbled text, loops, mostly
   navigation, menus or code.
 
-### 2. Labels: four sources, none sufficient alone
+### 2. Labels and rubric
+
+Three label sources, none sufficient alone:
 
 | Source | Size | Use | Why |
 |---|---:|---|---|
-| **Human gold set** (stratified by source × current P(HIGH) band) | 600–1,000 docs (300 minimum) | **Evaluation and calibration only, never training** | The only ground truth. basal's report: "the most important remaining step" |
-| **basal rubric** (typed questions, calibrated probabilities) | 30k docs on 1.5B (~8–10 h); 3k on 4.5B (~5 h) for agreement | Main training target | Real Polish judgement at ~1/1,000 of the cost of people; calibrated, typed answers |
-| **Code-made negatives** (twins) | 20–30k pairs | Training: LOW / MEDIUM with a known label | Basal's twin principle: one controlled change → known label. Corruptions: shuffled sentences, injected typos, stripped diacritics, OCR-like noise, keyword stuffing, truncation, repeated paragraphs, navigation/boilerplate prepended, machine-translated round-trip. Both twins stay in one split |
+| **Human gold set** (stratified by source × current P(HIGH) band) | 600–1,000 docs (300 minimum) | **Evaluation and calibration only, never training** | The only ground truth |
+| **Code-made negatives** (twins) | 20–30k pairs | Training: LOW / MEDIUM with a known label | The twin principle: one controlled change → known label. Corruptions: shuffled sentences, injected typos, stripped diacritics, OCR-like noise, keyword stuffing, truncation, repeated paragraphs, navigation/boilerplate prepended, machine-translated round-trip. Both twins stay in one split |
 | **SpeakLeash `quality`** | all SL docs | Feature and agreement check, not the target | It is a classifier's output |
 
-**basal rubric**: one request per document, all questions about the same state.
-- `noul` "Czy tekst jest napisany poprawną polszczyzną, bez licznych błędów i zniekształceń?"
-- `noul` "Czy tekst jest spójny i zrozumiały jako całość?"
-- `noul` "Czy tekst to głównie spam, reklama, lista linków lub słów kluczowych, menu albo fragmenty techniczne?"
-- `noul` "Czy tekst wygląda na wygenerowany maszynowo, automatycznie przetłumaczony lub zapętlony?"
-- `noul` "Czy tekst jest urwany lub złożony z niepowiązanych fragmentów?"
-- `score` "Jaka jest wartość informacyjna tekstu?" (0 brak – 3 wysoka; FineWeb-Edu-style rubric)
-- `score` "Ogólna jakość tekstu" with the three definitions above (LOW / MEDIUM / HIGH as levels)
+**Labelling rubric** — questions written and fixed in advance, one document per request, all questions about the same
+state; usable by human labellers and by any future local judge:
 
-Target = the overall-quality distribution (soft label). The other answers become **features** of the teacher, and
-their agreement with the overall answer is a sanity check.
+- "Czy tekst jest napisany poprawną polszczyzną, bez licznych błędów i zniekształceń?"
+- "Czy tekst jest spójny i zrozumiały jako całość?"
+- "Czy tekst to głównie spam, reklama, lista linków lub słów kluczowych, menu albo fragmenty techniczne?"
+- "Czy tekst wygląda na wygenerowany maszynowo, automatycznie przetłumaczony lub zapętlony?"
+- "Czy tekst jest urwany lub złożony z niepowiązanych fragmentów?"
+- "Jaka jest wartość informacyjna tekstu?" (0 brak – 3 wysoka; FineWeb-Edu-style rubric)
+- "Ogólna jakość tekstu" with the three definitions above (LOW / MEDIUM / HIGH as levels)
 
-Rules applied from the basal report:
+Target = the overall-quality level. The other answers become auxiliary signals of the teacher, and their agreement
+with the overall answer is a sanity check.
+
+Labelling rules:
 - Questions are written and **fixed before labelling**.
-- Composite judgements are split into primitives; the classifier, not basal, combines them.
-- **Only items where 1.5B and 4.5B agree get full weight** on the 3k overlap. Agreement rate per question is reported,
-  and questions under 70% agreement are dropped from the target.
+- Composite judgements are split into primitives; the classifier combines them.
+
+**Label supply.** The planned cheap rubric labels from an external decision model were cut with the external-project
+tie-in. Until a replacement exists, the documented fallback stands: the teacher trains on code-made negatives plus
+human labels from a training split only (§4); decision 2 covers the sizing.
 
 ### 3. Features
 
@@ -111,19 +109,43 @@ Rules applied from the basal report:
   - Graphical (`GR_LINK`, `GR_HASH`, `GR_MENTION`, `GR_EMOJI`, `GR_UPPER`), punctuation.
 - **Cheap features (~50, existing):** OOV rate against the plwiki word list, diacritics ratio, short/duplicate line
   ratios, symbol/word ratio, looping, U+FFFD, average lengths, hapax ratio…
-- **LM perplexity (new):** token NLL mean / p90 / std from basal-scratch 126M on the first 512 tokens.
+- **LM perplexity (new):** token NLL mean / p90 / std from the 126M scratch model (`pretrain/model.py`) on the first
+  512 tokens.
   - CCNet/FineWeb use perplexity because it catches garbled, machine-translated and boilerplate text.
   - Prefill-only on the Mac GPU, so it scales to the corpus [INFERENCE: throughput to measure].
   - Caveat: perplexity also rewards *familiar* text. Kept as a feature, never a sole filter.
-- **basal rubric probabilities:** the 5 noul + 1 score answers. **Teacher only**: too slow for the corpus.
 - **Metadata (feature):** source, length, SpeakLeash `quality` when present.
+
+**Loop and language signals (implemented in `pretrain/quality/textstats.py`).** The rationale, condensed from the
+research note this design grew out of:
+
+- **Repetition.** `loop_metrics` implements the Gopher/MassiveText cutoffs: duplicate line/paragraph fractions 0.30,
+  their character fractions 0.20, most-frequent 2–4-gram character fractions 0.20/0.18/0.16, repeated 5–10-gram
+  character fractions 0.15–0.10. FineWeb tested fifty-plus candidate statistics with training ablations and tightened
+  the duplicated-line character share to 0.10; FineWeb-2 disables paragraph filters when extraction doesn't preserve
+  paragraph boundaries ([Gopher](https://arxiv.org/abs/2112.11446), [FineWeb](https://arxiv.org/abs/2406.17557),
+  [FineWeb-2](https://arxiv.org/abs/2506.20920)). `loop_score` averages each Gopher-derived signal normalized by its
+  published cutoff (capped at 1) — a review ranking signal, not an automatic reject threshold; compression ratio
+  (zlib) and a suffix-automaton longest repeated substring round it out. Raw features stay visible so a human can
+  judge legitimate repetitions; RedPajama-V2 makes the same point by releasing 40+ per-document signals rather than
+  verdicts ([repo](https://github.com/togethercomputer/RedPajama-Data)).
+- **Language.** Document-level LID is not enough for mixed pages. Full fastText `lid.176.bin` was chosen over the
+  compressed `lid.176.ftz` (which mislabels short Polish text) for supported Polish, fast CPU inference and a modest
+  126 MB download ([fastText](https://fasttext.cc/docs/en/language-identification.html)). LID runs per line (lines
+  over 400 chars split at sentence ends); a unit is labelled only at ≥20 letters and confidence ≥0.5; the low-level
+  `model.f.predict` binding is required for NumPy 2 compatibility. FineWeb-2's data-driven per-language cutoffs
+  ([GlotLID](https://github.com/cisnlp/GlotLID)) are the reference for later per-language thresholds instead of
+  copying English-centric constants.
+- **Keep the signals separate.** Raw features, per-line language shares, script shares and highlight spans make
+  errors visible and let future human labels calibrate a classifier instead of hard-coding cutoffs; code-switch
+  research points the same way ([MaskLID](https://arxiv.org/abs/2406.06263)). Polish diacritic-word and stopword cues
+  improve recall on short segments but are heuristics — they never mask the LID shares.
 
 ### 4. Models
 
 - **Teacher:** XGBoost `multi:softprob` (HIGH / MEDIUM / LOW) with Bielik v3 hyperparameters (250 trees, depth 8,
   lr 0.08, subsample 0.75, colsample 0.8, α 0.2, λ 0.5).
-  - Training target: argmax of the basal overall-quality distribution, sample weight = its confidence × agreement
-    weight; plus code-made negatives.
+  - Training target: the §2 fallback — human labels from the training split plus code-made negatives.
   - Calibration: temperature fitted on a calibration split.
 - **Student:**
   - **What it sees:** cheap features + **StyloMetrix-lite** (the ~30–40 most important StyloMetrix metrics by SHAP,
@@ -142,11 +164,10 @@ Rules applied from the basal report:
 - **Baselines on the same items:**
   1. The SpeakLeash label.
   2. Our current filter.
-  3. basal rubric alone.
-  4. Cheap-only XGBoost.
-  5. StyloMetrix-only XGBoost.
-  6. Teacher (all features).
-  7. Student.
+  3. Cheap-only XGBoost.
+  4. StyloMetrix-only XGBoost.
+  5. Teacher (all features).
+  6. Student.
 - **Ablations:** remove one feature group at a time; SHAP summary per group.
 - **Fidelity checks:**
   - StyloMetrix-lite vs full (per-metric correlation ≥0.9 for the kept metrics).
@@ -161,10 +182,9 @@ Rules applied from the basal report:
 |---|---|
 | `pretrain/quality/stylometrix_worker.py` | Runs in its own venv (`.venv-stylometrix`, Python 3.11, GPL deps); JSONL in → 172 metrics out; multi-process |
 | `pretrain/quality/corrupt.py` | Code-made negative twins with known labels |
-| `pretrain/quality/label_basal.py` | Rubric requests via `basal-serve` (reuses `distill/label_teacher.py` patterns); 1.5B + 4.5B overlap |
 | `pretrain/quality/features.py` | Cheap features (moved from `build_tokens.py`), StyloMetrix-lite via `morfeusz2`, perplexity via MLX |
 | `pretrain/quality/train.py` | Teacher → student; calibration; SHAP; report |
-| `pretrain/quality/export_gold.py` | Stratified human-labelling sheet (Markdown + CSV, like `distill/export_spotcheck.py`) |
+| `pretrain/quality/export_gold.py` | Stratified human-labelling sheet (Markdown + CSV) |
 | `data/build_tokens.py` | Calls the student instead of the current XGBoost; threshold from the calibration report |
 
 ### 7. Time on this Mac
@@ -173,19 +193,16 @@ Rules applied from the basal report:
 |---|---:|
 | Environment + scripts | ~0.5 d |
 | Sample 30k docs (stratified by source) + StyloMetrix on them (~8 processes) | ~0.5 h |
-| basal-1.5B rubric on 30k docs | ~8–10 h (overnight) |
-| basal-4.5B rubric on a 3k subset | ~5 h |
 | Code-made negatives | minutes |
 | Human gold set (you or annotators) | 600 docs ≈ 5–6 h of reading; 300 minimum |
 | Teacher, student, evaluation, ablations | ~0.5 d |
 | Downstream 126M check (optional) | ~7 h |
-| **Total machine time** | **~2–3 days**, plus human labelling |
+| **Total machine time** | **~1–2 days**, plus human labelling |
 
 ### 8. Risks
 
-- **basal is not a quality model:** it was trained for decisions, not text quality. Its rubric answers are calibrated
-  for its own training distribution, not this task. The human gold set decides whether it is useful; if
-  basal-vs-human agreement on HIGH-vs-rest is <0.75 AUROC, train on human + code-made labels only.
+- **Label supply:** training labels come only from the human training split and code-made negatives. The negatives
+  cover known corruption patterns, so watch for organic LOW they don't represent.
 - **StyloMetrix:** version drift (spaCy 3.5 model under 3.7), GPL licence (process isolation), and speed (teacher-only).
 - **Perplexity bias:** rewards text similar to the scorer's training data (our corpus is web-heavy); monitor the
   source mix of kept documents.
@@ -197,5 +214,6 @@ Rules applied from the basal report:
 ### 9. Decisions needed
 
 1. Who labels the human gold set, and how many documents (300 minimum, 600–1,000 recommended)?
-2. Use basal-4.5B for the whole rubric (better, ~3× slower: ~30 h for 30k docs) or 1.5B + a 4.5B overlap (proposed)?
+2. How to obtain enough labelled training documents now that the cheap rubric-labelling option is cut: human-only
+   volume, negatives-first, or something else — and how large the human-labelled training split must be.
 3. Run the downstream 126M check (~7 h)? It is the only direct evidence that the filter helps pretraining.

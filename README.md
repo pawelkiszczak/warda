@@ -2,8 +2,8 @@
 
 A small, local decision model that guards what coding agents send out. Before an agent commits, comments, searches or
 calls an external API, Warda reads the company's data policy, the destination and the content, and decides:
-**allow / redact / ask the user / block**, with a calibrated confidence. It is built from scratch, inspired by
-typed-decision models such as basal and Jev.
+**allow / redact / ask the user / block**, with a calibrated confidence. It is built from scratch; the decision is
+typed — a choice from a closed set of options — rather than free-form text generation.
 
 Status: research and data stage. No trained Warda model yet.
 
@@ -13,9 +13,8 @@ Status: research and data stage. No trained Warda model yet.
 - `FINDINGS.md`: results and decisions so far, with links to the detailed documents.
 - `pretrain/harness/`: synthetic PII / disclosure dataset generator (`pii_gen.py`) and its tests.
 - `pretrain/`: scratch-model experiments: data pipeline (`data/`), MoE model and pretraining (`model.py`, `train.py`),
-  decision fine-tuning (`sft.py`, `sft/`), distillation (`distill/`), comparison with basal (`compare_basal.py`),
-  text-quality labelling tool (`quality/`). Details and results: `pretrain/README.md`.
-- `basal/`: basal-1.0 prompt format and examples, vendored (Apache-2.0, see `NOTICE`).
+  decision fine-tuning (`sft.py`, `sft/`), distillation (`distill/`), text-quality labelling tool (`quality/`).
+  Details and results: `pretrain/README.md`.
 
 ## Quick start
 

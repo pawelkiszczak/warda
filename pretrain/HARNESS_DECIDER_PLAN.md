@@ -14,7 +14,7 @@ wyciec:
 
 Budujemy **od zera własny, mały model decyzyjny**, działający lokalnie. Przed wysłaniem treści czyta politykę danych
 firmy, miejsce docelowe i treść. Decyduje: **zezwól / zamaskuj / zapytaj użytkownika / zablokuj**, z podaną pewnością.
-Inspiracja: modele decyzyjne typu basal (wybór z podanych odpowiedzi zamiast generowania tekstu). Model, dane
+Inspiracja: modele decyzyjne, które wybierają jedną z podanych odpowiedzi zamiast generować tekst. Model, dane
 i narzędzia tworzymy sami.
 
 Dlaczego:
@@ -90,7 +90,7 @@ spośród chętnych na pierwszym spotkaniu.
 ## 5. Harmonogram (~4–5 miesięcy)
 
 - **Faza 0, tyg. 1–2 — start.**
-  - `AGENTS.md` w repo, tablica zadań, właściciele, spis sprzętu.
+  - utworzenie `AGENTS.md` w repo; tablica zadań, właściciele, spis sprzętu.
   - Wytyczne labelowania; 100 przykładów sprawdzonych przez dwie osoby.
   - Wspólny sposób oceny, wyniki prostych rozwiązań.
   - **Bramka 1.**
@@ -144,7 +144,7 @@ Prawie wszystko darmowe i otwarte.
   - Microsoft Presidio;
   - GitGuardian ggshield (darmowe konto);
   - Bielik-Guard, Llama Prompt Guard;
-  - modele w stylu basal / Jev;
+  - modele decyzyjne w stylu Jev;
   - proste reguły.
 - **Integracje:** lekki serwer HTTP (FastAPI / Starlette); formaty modelu MLX (Mac), GGUF (Linux / Windows),
   opcjonalnie Core ML.
@@ -172,7 +172,7 @@ Projekt robimy z agentami programistycznymi i dla nich.
 **Czym pracujemy:** Orca (wiele agentów równolegle, osobne worktree), Claude Code, Codex CLI, omp, OpenCode, Qwen Code,
 Cursor, Gemini CLI. Każdy wybiera swojego; ważny jest wspólny kontrakt w repo.
 
-**Kontrakt w repo:**
+**Kontrakt w repo (pliki do utworzenia w fazie 0):**
 - `AGENTS.md` (i link `CLAUDE.md`): jak uruchomić testy, struktura repo, format danych, zakazy (prawdziwe dane,
   klucze w kodzie).
 - Wspólne skille / prompty do powtarzalnych zadań: generowanie przypadków, przegląd etykiet, uruchomienie oceny.
@@ -203,7 +203,7 @@ jesteśmy my.
 ## 9. Jak dołączyć
 
 1. Wpisz się w tabelę zapisów (punkt 4). Na kanale napisz, jakiego agenta używasz.
-2. Przeczytaj ten dokument i `AGENTS.md`.
+2. Przeczytaj ten dokument oraz `AGENTS.md` (po jego utworzeniu w fazie 0).
 3. Weź wolne zadanie swojego zespołu z tablicy.
 
 ## 10. Słowniczek
