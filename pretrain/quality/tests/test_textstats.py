@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import time
-
+from pretrain.quality import textstats
 from pretrain.quality.textstats import highlight_spans, loop_metrics, multilingual_metrics
 
 
@@ -129,22 +128,15 @@ def test_loop_score_is_bounded_and_short_repeated_string_is_found():
     assert 0 <= stats["loop_score"] <= 1
 
 
-def test_feature_throughput_on_3k_character_documents():
-    text = " ".join([POLISH] * 8)
-    assert len(text) >= 2_800
-    # Warm-up plus best-of-two: first-touch costs and transient scheduler noise must not fail the bar. The bar is
-    # 100 docs/s (measured ~190-250 warm on an M4 Max): a 200 bar kept flaking under CPU contention, while 100 still
-    # catches order-of-magnitude regressions (e.g. an accidental per-document model reload).
-    for _ in range(5):
-        loop_metrics(text)
+def test_lid_model_loads_once_across_many_documents(monkeypatch):
+    # The throughput regression that matters is reloading the fastText model per document (~100x slower). Count loads
+    # instead of timing, so the check is deterministic on shared CI runners.
+    loads = []
+    real_load = textstats._load_lid
+    monkeypatch.setattr(textstats, "_load_lid", lambda: loads.append(1) or real_load())
+    textstats._lid_model.cache_clear()
+    text = " ".join([POLISH, ENGLISH, CYRILLIC] * 3)
+    for _ in range(40):
         multilingual_metrics(text)
-    docs = [text] * 40
-    def timed_pass():
-        start = time.perf_counter()
-        for document in docs:
-            loop_metrics(document)
-            multilingual_metrics(document)
-        return time.perf_counter() - start
-
-    elapsed = min(timed_pass(), timed_pass())
-    assert len(docs) / elapsed >= 100
+        loop_metrics(text)
+    assert len(loads) == 1
