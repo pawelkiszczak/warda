@@ -3,7 +3,6 @@ from __future__ import annotations
 from pretrain.quality import textstats
 from pretrain.quality.textstats import highlight_spans, loop_metrics, multilingual_metrics
 
-
 POLISH = (
     "Wczoraj rano mieszkańcy Warszawy spotkali się na rynku, aby porozmawiać o nowych planach dla miasta. "
     "Podczas spotkania przedstawiono wyniki badań oraz propozycje dotyczące transportu publicznego. "
@@ -91,9 +90,11 @@ def test_duplicate_ngram_fraction_counts_each_character_once():
 
 def test_single_line_language_switches_are_not_absorbed_by_a_polish_neighbour():
     # Short lines of different languages used to be merged into one segment that read as Polish.
-    text = ("Rada Gminy uchwaliła budżet na przyszły rok i zapowiedziała konsultacje.\n"
-            "The council approved the budget for next year and announced consultations with residents.\n"
-            "В городе утвердили бюджет на следующий год.")
+    text = (
+        "Rada Gminy uchwaliła budżet na przyszły rok i zapowiedziała konsultacje.\n"
+        "The council approved the budget for next year and announced consultations with residents.\n"
+        "В городе утвердили бюджет на следующий год."
+    )
     stats = multilingual_metrics(text)
     assert stats["lang_shares"].get("en", 0) > 0.3
     assert stats["lang_shares"].get("ru", 0) > 0.1
@@ -102,7 +103,9 @@ def test_single_line_language_switches_are_not_absorbed_by_a_polish_neighbour():
 
 
 def test_polish_name_in_english_text_does_not_make_it_polish():
-    stats = multilingual_metrics("The meeting with Jan Kowalski from Łódź was postponed until next week because of rain.")
+    stats = multilingual_metrics(
+        "The meeting with Jan Kowalski from Łódź was postponed until next week because of rain."
+    )
     assert stats["top_lang"] == "en"
     assert stats["pl_share"] < 0.1
 
@@ -131,9 +134,14 @@ def test_loop_score_is_bounded_and_short_repeated_string_is_found():
 def test_lid_model_loads_once_across_many_documents(monkeypatch):
     # The throughput regression that matters is reloading the fastText model per document (~100x slower). Count loads
     # instead of timing, so the check is deterministic on shared CI runners.
-    loads = []
+    loads: list[int] = []
     real_load = textstats._load_lid
-    monkeypatch.setattr(textstats, "_load_lid", lambda: loads.append(1) or real_load())
+
+    def counted_load():
+        loads.append(1)
+        return real_load()
+
+    monkeypatch.setattr(textstats, "_load_lid", counted_load)
     textstats._lid_model.cache_clear()
     text = " ".join([POLISH, ENGLISH, CYRILLIC] * 3)
     for _ in range(40):

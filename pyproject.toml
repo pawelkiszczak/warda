@@ -1,0 +1,48 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "PIE", "RUF", "PERF", "PL", "S", "N", "T20"]
+ignore = ["E501", "PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "N803", "N806", "PLC0415"] # E501: formatter owns layout; long Polish prompts are data. PLR design/complexity codes: scientific/data pipelines have intentional thresholds, coupled control flow, and model APIs. N803/N806: math tensor names. PLC0415: lazy optional imports keep non-ML commands importable without MLX.
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**/*.py" = ["S101"] # Assertions are the test suite's verification mechanism.
+"**/test_*.py" = ["S101"] # Assertions are the test suite's verification mechanism.
+"pretrain/harness/pii_gen.py" = ["S311", "T201", "RUF002", "RUF003"] # Synthetic data uses non-crypto randomness, prints CLI status, and contains intentional Polish prompt punctuation.
+"pretrain/harness/tests/test_pii_gen.py" = ["S311"] # Tests exercise the synthetic generator's non-cryptographic randomness.
+"pretrain/sft/tests/test_englishize.py" = ["S311"] # Tests use seeded non-cryptographic randomness for reproducible output.
+"pretrain/data/build_tokens.py" = ["T201", "S311", "PLW0603"] # CLI progress, seeded sampling, and multiprocessing worker globals are intentional.
+"pretrain/sft.py" = ["T201", "SIM115"] # Training status prints; its log is flushed once per epoch and scoped to the training run.
+"pretrain/train.py" = ["T201", "SIM115"] # Training progress prints; the live metrics stream flushes every step and closes with the long-running process.
+"pretrain/track.py" = ["T201"] # Tracking status is intentionally printed for interactive CLI runs.
+"pretrain/distill/build_pool.py" = ["T201", "S311"] # CLI summaries and seeded training-pool sampling are intentional.
+"pretrain/distill/export_spotcheck.py" = ["T201", "S311"] # CLI summary and seeded sample selection are intentional.
+"pretrain/distill/make_eval.py" = ["T201"] # CLI summary is intentionally printed.
+"pretrain/distill/verify_bielik.py" = ["T201"] # CLI summary is intentionally printed.
+"pretrain/distill/common.py" = ["T201"] # Status messages are intentionally printed by CLI helpers.
+"pretrain/distill/family_gaps.py" = ["T201"] # CLI metrics are intentionally printed.
+"pretrain/quality/app.py" = ["T201", "S311", "RUF003"] # CLI status and seeded examples are intentional; Mann-Whitney is conventionally punctuated.
+"pretrain/quality/enrich.py" = ["T201"] # CLI progress and summaries are intentionally printed.
+"pretrain/quality/export_labels.py" = ["T201"] # Export summary is intentionally printed.
+"pretrain/quality/sample.py" = ["T201", "S311", "E402"] # Sampling uses deterministic non-crypto RNG; CLI output and repository-root setup are intentional.
+"pretrain/quality/stylometrix_worker.py" = ["T201", "PLW0603"] # CLI progress and multiprocessing model globals are intentional.
+"pretrain/sft/convert_jev.py" = ["T201", "S311", "E402"] # Dataset conversion uses seeded non-crypto sampling and repository-root setup.
+"pretrain/sft/generate.py" = ["T201", "S311", "RUF002", "RUF003"] # Dataset generation uses seeded non-crypto sampling and intentional Polish prompt punctuation.
+"pretrain/sft/mix_stages.py" = ["T201", "S311", "RUF002"] # CLI output, seeded mixture sampling, and multiplication signs are intentional.
+"pretrain/quality/tests/test_textstats.py" = ["RUF001"] # Mixed-script test fixture intentionally contains a Cyrillic lookalike.
+"pretrain/quality/textstats.py" = ["RUF001"] # Linguistic feature fixtures preserve real Unicode punctuation.
+
+[tool.mypy]
+python_version = "3.12"
+files = ["pretrain"]
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+explicit_package_bases = true
+
+[tool.codespell]
+# Polish prompt/stopword vocabulary (tekst, produkt, adres, ...), language codes (vie), the CC "nd" licence tag, the
+# FineWeb-Edu key prefix "fwe", a synthetic person name (Mata), and valid terms codespell doesn't know.
+ignore-words-list = "adres,autor,charakter,disjointness,dokument,fwe,mata,nam,nd,numer,produkt,regon,serwer,te,tekst,unparseable,vie"

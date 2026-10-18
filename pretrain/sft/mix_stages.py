@@ -16,6 +16,7 @@ temperatures see both languages; test is always the Polish test.
 
     pretrain/.venv/bin/python pretrain/sft/mix_stages.py
 """
+
 import argparse
 import json
 import random
@@ -38,8 +39,11 @@ def copies(lines, n):
     """n copies with unique ids (ids stay distinct across the mixture and in any downstream eval)."""
     if n == 1:
         return list(lines)
-    return [json.dumps({**json.loads(line), "id": f"{json.loads(line)['id']}#copy{c}"}, ensure_ascii=False)
-            for c in range(n) for line in lines]
+    return [
+        json.dumps({**json.loads(line), "id": f"{json.loads(line)['id']}#copy{c}"}, ensure_ascii=False)
+        for c in range(n)
+        for line in lines
+    ]
 
 
 def balance_noul(lines, rng, max_share=0.6):
@@ -52,7 +56,7 @@ def balance_noul(lines, rng, max_share=0.6):
     majority = max(by_gold.values(), key=len)
     keep_major = min(len(majority), int(len(minority) * max_share / (1 - max_share)))
     kept = {id(r) for r in minority + rng.sample(majority, keep_major)}
-    return [line for line, r in zip(lines, rows) if r["type"] != "noul" or id(r) in kept]
+    return [line for line, r in zip(lines, rows, strict=False) if r["type"] != "noul" or id(r) in kept]
 
 
 def held_bucket(line):
@@ -67,10 +71,12 @@ def joint_v3(stage1, polish, distilled, both, polish_copies, distill_copies, nou
     on kaivoss)."""
     train = [line for line in distilled if held_bucket(line) is None]
     held = {s: both[s] + [line for line in distilled if held_bucket(line) == s] for s in ("dev", "cal")}
-    boost = [json.dumps({**json.loads(line), "id": json.loads(line)["id"] + "#boost"}, ensure_ascii=False)
-             for line in stage1 if json.loads(line)["family"].split("/")[0] in ("openjev", "kaivoss")]
-    rows = (stage1 + boost + copies(polish, polish_copies)
-            + copies(balance_noul(train, rng, noul_share), distill_copies))
+    boost = [
+        json.dumps({**json.loads(line), "id": json.loads(line)["id"] + "#boost"}, ensure_ascii=False)
+        for line in stage1
+        if json.loads(line)["family"].split("/")[0] in ("openjev", "kaivoss")
+    ]
+    rows = stage1 + boost + copies(polish, polish_copies) + copies(balance_noul(train, rng, noul_share), distill_copies)
     return rows, held
 
 
@@ -88,7 +94,9 @@ def main():
 
     polish = read(WORK / "sft" / "train.jsonl")
     stage1 = read(WORK / "sft_jev" / "stage1" / "train.jsonl")
-    both = {s: read(WORK / "sft" / f"{s}.jsonl") + read(WORK / "sft_jev" / "stage1" / f"{s}.jsonl") for s in ("dev", "cal")}
+    both = {
+        s: read(WORK / "sft" / f"{s}.jsonl") + read(WORK / "sft_jev" / "stage1" / f"{s}.jsonl") for s in ("dev", "cal")
+    }
     polish_only = {s: read(WORK / "sft" / f"{s}.jsonl") for s in ("dev", "cal")}
     n_replay = round(len(polish) * a.replay / (1 - a.replay))
     mixes = {
@@ -101,11 +109,20 @@ def main():
         mixes["joint-v2"] = (stage1 + copies(polish, a.v2_polish_copies) + copies(distill, a.distill_copies), both)
     round2 = WORK / "distill" / "teacher_round2.jsonl"
     if distilled.exists() and round2.exists():
-        mixes["joint-v3"] = joint_v3(stage1, polish, read(distilled) + read(round2), both,
-                                     a.v2_polish_copies, a.distill_copies, 0.6, rng)
+        mixes["joint-v3"] = joint_v3(
+            stage1, polish, read(distilled) + read(round2), both, a.v2_polish_copies, a.distill_copies, 0.6, rng
+        )
         # own RNG so adding v4 leaves the earlier mixtures' sampling and shuffles unchanged
-        mixes["joint-v4"] = joint_v3(stage1, polish, read(distilled) + read(round2), both,
-                                     a.v4_polish_copies, a.distill_copies, a.v4_noul_share, random.Random(a.seed + 4))
+        mixes["joint-v4"] = joint_v3(
+            stage1,
+            polish,
+            read(distilled) + read(round2),
+            both,
+            a.v4_polish_copies,
+            a.distill_copies,
+            a.v4_noul_share,
+            random.Random(a.seed + 4),
+        )
     for name, (rows, held) in mixes.items():
         rng.shuffle(rows)
         out = WORK / "sft_jev" / name

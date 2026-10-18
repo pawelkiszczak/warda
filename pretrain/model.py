@@ -10,11 +10,12 @@ Embeddings are tied.
 `Model(tokens)` returns `(logits, loads, balance_loss)`; `loads` is a (layers, n_experts) array of routed-token counts
 that the trainer uses to update the selection bias.
 """
+
 import math
 from dataclasses import asdict, dataclass
 
 import mlx.core as mx
-import mlx.nn as nn
+from mlx import nn
 from mlx.utils import tree_flatten, tree_map_with_path
 from mlx_lm.models.switch_layers import SwitchGLU
 
@@ -140,7 +141,7 @@ class Model(nn.Module):
         return [b.moe.balance_bias for b in self.blocks]
 
     def set_balance_biases(self, biases):
-        for b, v in zip(self.blocks, biases):
+        for b, v in zip(self.blocks, biases, strict=False):
             b.moe.balance_bias = v
 
 
@@ -149,4 +150,4 @@ def param_counts(model: Model):
     c = model.config
     routed = c.layers * c.n_experts * 3 * c.d * c.expert_ff
     active = total - routed + c.layers * c.top_k * 3 * c.d * c.expert_ff
-    return dict(total=total, active=active, active_non_embedding=active - c.vocab * c.d)
+    return {"total": total, "active": active, "active_non_embedding": active - c.vocab * c.d}

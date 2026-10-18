@@ -11,17 +11,17 @@ Writes `pretrain/work/runs/<name>/`: `metrics.jsonl`, `ckpt/` (latest, resumable
     pretrain/.venv/bin/python pretrain/train.py --name s126m-1b --tokens 1e9
     pretrain/.venv/bin/python pretrain/train.py --name s126m-1b --tokens 1e9 --resume
 """
+
 import argparse
 import json
 import time
 from pathlib import Path
 
 import mlx.core as mx
-import mlx.nn as nn
 import mlx.optimizers as optim
 import numpy as np
+from mlx import nn
 from mlx.utils import tree_flatten, tree_map, tree_map_with_path, tree_unflatten
-
 from model import Config, Model, param_counts
 
 ROOT = Path(__file__).resolve().parent
@@ -56,12 +56,13 @@ class Chunks:
         return np.random.default_rng(self.seed + epoch).permutation(self.n)
 
     def batch(self, idx):
-        rows = np.stack([self.data[i * (self.seq + 1):(i + 1) * (self.seq + 1)] for i in idx]).astype(np.int32)
+        rows = np.stack([self.data[i * (self.seq + 1) : (i + 1) * (self.seq + 1)] for i in idx]).astype(np.int32)
         return mx.array(rows[:, :-1]), mx.array(rows[:, 1:])
 
 
 def make_loss(model, dtype, aux_coef):
     """(total loss, (routed-token counts, LM cross-entropy)); total = CE + aux_coef * balance loss."""
+
     def loss_fn(params, biases, x, y):
         model.update(cast_params(params, dtype))
         model.set_balance_biases(biases)
@@ -74,7 +75,7 @@ def make_loss(model, dtype, aux_coef):
 
 def greedy(model, tok, prompt, n=24):
     ids = tok(prompt, add_special_tokens=False).input_ids
-    ids = [1] + ids
+    ids = [1, *ids]
     for _ in range(n):
         logits, _, _ = model(mx.array([ids]))
         nxt = int(mx.argmax(logits[0, -1]))
@@ -131,14 +132,20 @@ def main():
         opt.state = tree_unflatten(list(mx.load(str(run / "ckpt" / "opt.safetensors")).items()))
         step = st["step"]
         print(f"resumed at step {step}", flush=True)
-    (run / "config.json").write_text(json.dumps(dict(model=cfg.to_dict(), train=vars(a), params=counts), indent=2, default=str))
+    (run / "config.json").write_text(
+        json.dumps({"model": cfg.to_dict(), "train": vars(a), "params": counts}, indent=2, default=str)
+    )
 
     from transformers import AutoTokenizer
+
     tok = AutoTokenizer.from_pretrained("speakleash/Bielik-1.5B-v3.0-Instruct")
     train = Chunks(a.data / "train.bin", a.seq, a.seed)
     val_sources = {p.stem[4:]: Chunks(p, a.seq, 0) for p in sorted(a.data.glob("val_*.bin"))}
-    print(f"params {counts} | train chunks {train.n:,} ({train.n * (a.seq + 1) / 1e9:.2f}B tok) | "
-          f"{total_steps} steps x {tok_per_step:,} tok | val sources {list(val_sources)}", flush=True)
+    print(
+        f"params {counts} | train chunks {train.n:,} ({train.n * (a.seq + 1) / 1e9:.2f}B tok) | "
+        f"{total_steps} steps x {tok_per_step:,} tok | val sources {list(val_sources)}",
+        flush=True,
+    )
 
     loss_and_grad = mx.value_and_grad(make_loss(model, mx.bfloat16, a.aux_coef))
     micro = mx.compile(loss_and_grad)
@@ -160,13 +167,15 @@ def main():
         mx.save_safetensors(str(run / "ckpt" / "params.safetensors"), dict(tree_flatten(params)))
         mx.save_safetensors(str(run / "ckpt" / "biases.safetensors"), {str(i): b for i, b in enumerate(biases)})
         mx.save_safetensors(str(run / "ckpt" / "opt.safetensors"), dict(tree_flatten(opt.state)))
-        (run / "ckpt" / "state.json").write_text(json.dumps(dict(step=step)))
+        (run / "ckpt" / "state.json").write_text(json.dumps({"step": step}))
 
     log = open(run / "metrics.jsonl", "a")
     per_epoch = train.n // (a.micro * a.accum)
     if per_epoch == 0:
-        raise SystemExit(f"training data too small: {train.n} chunks give no full optimizer step at "
-                         f"micro={a.micro} x accum={a.accum}; lower --micro/--accum or add data")
+        raise SystemExit(
+            f"training data too small: {train.n} chunks give no full optimizer step at "
+            f"micro={a.micro} x accum={a.accum}; lower --micro/--accum or add data"
+        )
     t_last, tok_since = time.perf_counter(), 0
     while step < total_steps:
         lr = lr_at(step, total_steps, a.lr, a.warmup, a.decay_frac)
@@ -177,12 +186,14 @@ def main():
         grads_acc, loads_acc, loss_acc = None, None, 0.0
         for m in range(a.accum):
             s = (pos * a.accum + m) * a.micro
-            x, y = train.batch(order[s:s + a.micro])
+            x, y = train.batch(order[s : s + a.micro])
             (_, (loads, loss)), grads = micro(params, biases, x, y)
             grads_acc = grads if grads_acc is None else tree_map(mx.add, grads_acc, grads)
             loads_acc = loads if loads_acc is None else loads_acc + loads
             loss_acc = loss_acc + loss
             mx.eval(grads_acc, loads_acc, loss_acc)  # bound memory: one micro-batch graph at a time
+        if grads_acc is None or loads_acc is None:
+            raise RuntimeError("gradient accumulation produced no micro-batches")
         grads_acc = tree_map(lambda g: g / a.accum, grads_acc)
         grads_acc, gnorm = optim.clip_grad_norm(grads_acc, a.clip)
         params = opt.apply_gradients(grads_acc, params)
@@ -193,14 +204,23 @@ def main():
         mx.eval(params, opt.state, biases, loss_acc, gnorm, imbalance)
         step += 1
         tok_since += tok_per_step
-        rec = dict(step=step, loss=float(loss_acc) / a.accum, lr=lr, gnorm=float(gnorm),
-                   max_load_ratio=float(imbalance), tokens=step * tok_per_step)
+        rec = {
+            "step": step,
+            "loss": float(loss_acc) / a.accum,
+            "lr": lr,
+            "gnorm": float(gnorm),
+            "max_load_ratio": float(imbalance),
+            "tokens": step * tok_per_step,
+        }
         if step % 10 == 0 or step == 1:
             dt = time.perf_counter() - t_last
             rec["tok_s"] = tok_since / dt
             eta_h = (total_steps - step) * tok_per_step / rec["tok_s"] / 3600
-            print(f"step {step}/{total_steps} loss {rec['loss']:.4f} lr {lr:.2e} gnorm {rec['gnorm']:.2f} "
-                  f"maxload {rec['max_load_ratio']:.2f} {rec['tok_s']:,.0f} tok/s eta {eta_h:.1f} h", flush=True)
+            print(
+                f"step {step}/{total_steps} loss {rec['loss']:.4f} lr {lr:.2e} gnorm {rec['gnorm']:.2f} "
+                f"maxload {rec['max_load_ratio']:.2f} {rec['tok_s']:,.0f} tok/s eta {eta_h:.1f} h",
+                flush=True,
+            )
             t_last, tok_since = time.perf_counter(), 0
         if step % a.eval_every == 0 or step == total_steps:
             rec["val"] = evaluate()

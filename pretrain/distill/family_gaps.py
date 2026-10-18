@@ -7,6 +7,7 @@ predictor, compares with the teacher distribution (argmax agreement and KL(teach
 
     pretrain/.venv/bin/python pretrain/distill/family_gaps.py --run jev-joint-v2 --items pretrain/work/distill/teacher_probe2.jsonl
 """
+
 import argparse
 import json
 import math
@@ -32,14 +33,14 @@ def main():
     enc = sft.Encoder(AutoTokenizer.from_pretrained(sft.TOKENIZER))
     items = sft.load_jsonl(a.items)
     logits = sft.predict(model, pointer, enc, items, 16384)
-    stats = defaultdict(lambda: {"n": 0, "agree": 0, "kl": 0.0})
+    stats: defaultdict[str, dict[str, int | float]] = defaultdict(lambda: {"n": 0, "agree": 0, "kl": 0.0})
     for it in items:
         p, _ = sft.probs_at(logits[it["id"]], sft.temp_for(temps, it))
         t = it["target"]
         s = stats[it["family"]]
         s["n"] += 1
         s["agree"] += int(max(range(len(t)), key=t.__getitem__) == int(p.argmax()))
-        s["kl"] += sum(ti * math.log(max(ti, 1e-9) / max(float(pi), 1e-9)) for ti, pi in zip(t, p))
+        s["kl"] += sum(ti * math.log(max(ti, 1e-9) / max(float(pi), 1e-9)) for ti, pi in zip(t, p, strict=False))
     mean_kl = sum(s["kl"] for s in stats.values()) / sum(s["n"] for s in stats.values())
     report = {f: {"n": s["n"], "agreement": s["agree"] / s["n"], "kl": s["kl"] / s["n"]} for f, s in stats.items()}
     weights = {f: round(min(3.0, max(0.5, r["kl"] / mean_kl)), 2) for f, r in report.items()}

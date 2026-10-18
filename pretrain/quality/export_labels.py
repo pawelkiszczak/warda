@@ -3,6 +3,7 @@
 
 Run: python -m pretrain.quality.export_labels [--items PATH] [--db PATH] [--out PATH]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,7 +45,12 @@ def export(items_path: Path, db_path: Path, out: Path):
     with sqlite3.connect(db_path) as db:
         db.row_factory = sqlite3.Row
         audit = [dict(r) for r in db.execute("SELECT * FROM labels ORDER BY id")]
-        latest = [dict(r) for r in db.execute("SELECT l.* FROM labels l JOIN (SELECT item_id,labeller,MAX(id) id FROM labels GROUP BY item_id,labeller) x ON l.id=x.id ORDER BY l.id")]
+        latest = [
+            dict(r)
+            for r in db.execute(
+                "SELECT l.* FROM labels l JOIN (SELECT item_id,labeller,MAX(id) id FROM labels GROUP BY item_id,labeller) x ON l.id=x.id ORDER BY l.id"
+            )
+        ]
     with (out / "labels_audit.jsonl").open("w", encoding="utf-8") as f:
         for row in audit:
             row["flags"] = json.loads(row["flags"] or "[]")
@@ -79,4 +85,6 @@ def main():
     latest, audit = export(args.items, args.db, args.out)
     print(f"Exported {latest} latest labels and {audit} audit rows to {args.out}")
 
-if __name__ == "__main__": main()
+
+if __name__ == "__main__":
+    main()

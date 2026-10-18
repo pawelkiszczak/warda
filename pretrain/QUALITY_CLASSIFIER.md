@@ -93,6 +93,7 @@ Target = the overall-quality level. The other answers become auxiliary signals o
 with the overall answer is a sanity check.
 
 Labelling rules:
+
 - Questions are written and **fixed before labelling**.
 - Composite judgements are split into primitives; the classifier combines them.
 

@@ -5,6 +5,7 @@
 Agenci programistyczni (Claude Code, Codex, Cursor, OpenCode i inne) sami wysyłają treści na zewnątrz: commity, PR-y,
 komentarze w zgłoszeniach, wiadomości na czacie, zapytania do wyszukiwarki, prompty do modeli w chmurze. Mogą przy tym
 wyciec:
+
 - dane osobowe (imię i nazwisko, PESEL, e-mail, telefon, adres, konto);
 - dane wrażliwe (zdrowie, religia, związki zawodowe, karalność);
 - hasła, klucze, tokeny;
@@ -18,6 +19,7 @@ Inspiracja: modele decyzyjne, które wybierają jedną z podanych odpowiedzi zam
 i narzędzia tworzymy sami.
 
 Dlaczego:
+
 - **Lokalnie.** Wysłanie podejrzanych danych do zewnętrznej usługi samo jest wyciekiem.
 - **Polityka zwykłym tekstem.** Model ją czyta; nie trenujemy go osobno dla każdej firmy.
 - **Znana pewność.** Pewne decyzje automatycznie, niepewne do człowieka.
@@ -62,6 +64,7 @@ Każdy zespół ma jednego właściciela. ~5 h tygodniowo na osobę. Jedna osoba
   labelowania.
 
 **Szukamy też:**
+
 - osoby od RODO (2–3 h tygodniowo);
 - 3–5 testerów na ostatnią fazę;
 - drugiej osoby do treningu jako zastępstwa.
@@ -173,12 +176,14 @@ Projekt robimy z agentami programistycznymi i dla nich.
 Cursor, Gemini CLI. Każdy wybiera swojego; ważny jest wspólny kontrakt w repo.
 
 **Kontrakt w repo (pliki do utworzenia w fazie 0):**
+
 - `AGENTS.md` (i link `CLAUDE.md`): jak uruchomić testy, struktura repo, format danych, zakazy (prawdziwe dane,
   klucze w kodzie).
 - Wspólne skille / prompty do powtarzalnych zadań: generowanie przypadków, przegląd etykiet, uruchomienie oceny.
 - Jedno zadanie = jedna gałąź / worktree. Agenci nie wchodzą sobie w drogę.
 
 **Zasady:**
+
 - Agent pisze, człowiek przegląda. Mały PR, testy przechodzą przed scaleniem.
 - Agent może proponować przypadki i etykiety. Ostateczna ocena przykładów wzorcowych należy do ludzi.
 - Do promptów nie wklejamy kluczy ani danych z pracy. Przy danych wrażliwych lokalny model, np. Qwen Code z lokalnym

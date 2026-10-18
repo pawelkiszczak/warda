@@ -9,9 +9,19 @@ runs live in `pretrain/work/` (gitignored).
 
 ## Pretraining data
 
-`data/build_tokens.py` downloads resumable SpeakLeash JSONL.zst prefixes in parallel with HTTP Range and the selected Hugging Face parquet train shards, then filters, classifies, deduplicates, and tokenizes with APT4. Cleaned SpeakLeash docs are cached per source; curation and tokenization are streamed in bounded batches through a 12-worker process pool into a SQLite spool to avoid retaining the corpus in RAM. Run progress is persisted at `work/data_pipeline.log`; token-bin hashes and source licenses are written to `work/tokens/manifest.json`.
+`data/build_tokens.py` downloads resumable SpeakLeash JSONL.zst prefixes in parallel with HTTP Range and the selected Hugging
+Face parquet train shards, then filters, classifies, deduplicates, and tokenizes with APT4. Cleaned SpeakLeash docs are
+cached per source; curation and tokenization are streamed in bounded batches through a 12-worker process pool into a
+SQLite spool to avoid retaining the corpus in RAM. Run progress is persisted at `work/data_pipeline.log`; token-bin
+hashes and source licenses are written to `work/tokens/manifest.json`.
 
-Curation uses NFC normalization, replacement-character ratio ≤0.001, email/phone/URL anonymization, ≥200 alphanumeric characters, and loop/duplicate-line rejection. Documents sharing any normalized word 13-gram with KLEJ test data are removed. SpeakLeash HIGH passes directly; other Polish docs require P(HIGH)>0.50 (the permitted relaxation from >0.90; it did not materially increase selected volume). The XGBoost classifier uses Bielik v3 hyperparameters (250 estimators, depth 8, learning rate .08, subsample .75, colsample .8, alpha .2, lambda .5); evaluation: accuracy 0.8133, macro-F1 0.8136, HIGH-F1 0.7845. Exact SHA-256 and 128-permutation MinHash word 13-gram LSH at Jaccard .8 are used. Per-source train/val selection is seeded-random (42) within caps, not ranked by P(HIGH); val is held out by document.
+Curation uses NFC normalization, replacement-character ratio ≤0.001, email/phone/URL anonymization, ≥200 alphanumeric
+characters, and loop/duplicate-line rejection. Documents sharing any normalized word 13-gram with KLEJ test data are
+removed. SpeakLeash HIGH passes directly; other Polish docs require P(HIGH)>0.50 (the permitted relaxation from >0.90;
+it did not materially increase selected volume). The XGBoost classifier uses Bielik v3 hyperparameters (250 estimators,
+depth 8, learning rate .08, subsample .75, colsample .8, alpha .2, lambda .5); evaluation: accuracy 0.8133, macro-F1
+0.8136, HIGH-F1 0.7845. Exact SHA-256 and 128-permutation MinHash word 13-gram LSH at Jaccard .8 are used. Per-source
+train/val selection is seeded-random (42) within caps, not ranked by P(HIGH); val is held out by document.
 
 Data source licenses as reported by the source manifests:
 
@@ -33,7 +43,8 @@ Data source licenses as reported by the source manifests:
 | `forum_gazeta_pl_corpus`, `forum_muratordom_pl_corpus` | conditional license |
 | `web_artykuły_inne_1`, `web_artykuły_inne_2` | conditional license |
 
-One clean run downloaded 19,993,996,594 unique bytes (~18.6 GiB); repairing a corrupted FineWeb-2 shard brought total transfer to about 24.84 GB plus small manifests/benchmark files. The full pipeline log is `work/data_pipeline.log`.
+One clean run downloaded 19,993,996,594 unique bytes (~18.6 GiB); repairing a corrupted FineWeb-2 shard brought total
+transfer to about 24.84 GB plus small manifests/benchmark files. The full pipeline log is `work/data_pipeline.log`.
 
 Observed stage yields:
 
@@ -52,7 +63,8 @@ Observed stage yields:
 | MinHash near-duplicates | 360,362 |
 | Unique deduplicated/tokenized candidates | 4,691,575 |
 
-Final token mix (whole-document counts from the manifest; the 1.05B allocation is unmet because SpeakLeash source quotas/data availability cap the total):
+Final token mix (whole-document counts from the manifest; the 1.05B allocation is unmet because SpeakLeash source
+quotas/data availability cap the total):
 
 | Source group | Planned tokens | Selected tokens | Share of selected |
 | --- | ---: | ---: | ---: |
@@ -61,9 +73,16 @@ Final token mix (whole-document counts from the manifest; the 1.05B allocation i
 | SpeakLeash | 525,000,000 (50%) | 302,436,277 | 36.6% |
 | Total train + val | 1,050,000,000 | 827,438,860 | 100% |
 
-The P(HIGH)>0.90 run produced 821,854,843 train / 5,144,940 val tokens. The P(HIGH)>0.50 run produced 822,407,035 train / 5,031,825 val tokens, only 552,192 more combined tokens; neither reaches the ≥1B train target. Rebuilding with the strict threshold would take well over the 60-minute limit (the relaxed full run took 16,185 seconds), so the current bins retain the P(HIGH)>0.50 setting. They are usable for training 1B total tokens (~1.22 epochs), but are not a 1B-token unique corpus.
+The P(HIGH)>0.90 run produced 821,854,843 train / 5,144,940 val tokens. The P(HIGH)>0.50 run produced 822,407,035 train
+/ 5,031,825 val tokens, only 552,192 more combined tokens; neither reaches the ≥1B train target. Rebuilding with the
+strict threshold would take well over the 60-minute limit (the relaxed full run took 16,185 seconds), so the current
+bins retain the P(HIGH)>0.50 setting. They are usable for training 1B total tokens (~1.22 epochs), but are not a
+1B-token unique corpus.
 
-The bins built by this run framed every document as `<s><s> … </s>`: the tokenizer added its own `<s>` on top of the explicit framing. The doubled `<s>` was removed in place afterwards (train 822,407,035 → 821,488,299 tokens; new hashes under `bos_dedup_fix` in the manifest) and `tokenize_worker` now encodes with `add_special_tokens=False`, so a rebuild produces `<s> … </s>` directly.
+The bins built by this run framed every document as `<s><s> … </s>`: the tokenizer added its own `<s>` on top of the
+explicit framing. The doubled `<s>` was removed in place afterwards (train 822,407,035 → 821,488,299 tokens; new hashes
+under `bos_dedup_fix` in the manifest) and `tokenize_worker` now encodes with `add_special_tokens=False`, so a rebuild
+produces `<s> … </s>` directly.
 
 Per-source train/val bins, mixed bins, and SHA-256 hashes are in `work/tokens/manifest.json`. Reproduce with:
 
@@ -80,15 +99,45 @@ pretrain/.venv/bin/python pretrain/data/build_tokens.py
 pretrain/.venv/bin/python pretrain/sft/generate.py
 ```
 
-Generation is seeded and rerunnable. It produces five code-labeled Polish-first families (deadlines, VAT/discounts/instalments, threshold rules, ticket routing, urgency scores), plus sufficiency pairs in every split and gold-flipping deadline, amount, and threshold counterfactuals whose paired rows share `case_id` and split. Each family has eight narrative templates: templates 0–4 train, 5 dev, 6 calibration, 7 test. Entity pools are disjoint by split. Polish states use named entities in labelled fields and natural-language dates; ISO dates are used only in the held-out template. English is sampled on every eighth base case (10.8% of retained rows overall). English amount and urgency states are rebuilt from the generator's exact values rather than re-parsed from the Polish text, so the stated numbers always match the gold label (`sft/tests/test_englishize.py` locks this in; a value that cannot be determined raises instead of defaulting). Instruction injections measured 15.9% of code-labeled rows.
+Generation is seeded and rerunnable. It produces five code-labeled Polish-first families (deadlines, VAT/discounts/instalments,
+threshold rules, ticket routing, urgency scores), plus sufficiency pairs in every split and gold-flipping deadline,
+amount, and threshold counterfactuals whose paired rows share `case_id` and split. Each family has eight narrative
+templates: templates 0–4 train, 5 dev, 6 calibration, 7 test. Entity pools are disjoint by split. Polish states use
+named entities in labelled fields and natural-language dates; ISO dates are used only in the held-out template.
+English is sampled on every eighth base case (10.8% of retained rows overall). English amount and urgency states are
+rebuilt from the generator's exact values rather than re-parsed from the Polish text, so the stated numbers always
+match the gold label (`sft/tests/test_englishize.py` locks this in; a value that cannot be determined raises instead
+of defaulting). Instruction injections measured 15.9% of code-labeled rows.
 
-Deadline arithmetic shifts weekend and Polish public-holiday endpoints (including Easter Monday and Corpus Christi) to the next business day. Amount labels use decimal rounding, nonzero discounts, and same-width plausible options; threshold comparisons cover inclusive and strict boundaries, routing labels are assigned by construction, and urgency scores follow the explicit thresholds in each state. Option arrays remain canonical (score levels low-to-high; noul options `tak, nie` / `yes, no`); downstream training performs option randomization.
+Deadline arithmetic shifts weekend and Polish public-holiday endpoints (including Easter Monday and Corpus Christi)
+to the next business day. Amount labels use decimal rounding, nonzero discounts, and same-width plausible options;
+threshold comparisons cover inclusive and strict boundaries, routing labels are assigned by construction, and urgency
+scores follow the explicit thresholds in each state. Option arrays remain canonical (score levels low-to-high; noul
+options `tak, nie` / `yes, no`); downstream training performs option randomization.
 
-Public conversions use only `allegro/klej-polemo2-in` (choice sentiment, CC-BY-SA-4.0), `allegro/klej-allegro-reviews` (score 1–5, license untagged), `allegro/klej-cbd` (noul, license untagged), and `allegro/klej-dyk` (noul, CC-BY-SA-3.0). Train/dev/cal rows are selected only from each source's train CSV; test rows come only from its test CSV. Public noul labels are sampled evenly, and each dataset is capped at 12% of the final training split. No NC datasets are included; “none-tagged” is retained verbatim as a provenance warning, not a license grant.
+Public conversions use only `allegro/klej-polemo2-in` (choice sentiment, CC-BY-SA-4.0),
+`allegro/klej-allegro-reviews` (score 1–5, license untagged), `allegro/klej-cbd` (noul, license untagged), and
+`allegro/klej-dyk` (noul, CC-BY-SA-3.0). Train/dev/cal rows are selected only from each source's train CSV; test
+rows come only from its test CSV. Public noul labels are sampled evenly, and each dataset is capped at 12% of the
+final training split. No NC datasets are included; “none-tagged” is retained verbatim as a provenance warning, not
+a license grant.
 
-The latest generation produced **32,677 / 3,442 / 3,615 / 4,974** train/dev/cal/test rows. Family counts in that order: deadlines 8,521/1,135/1,136/1,419; sufficiency 3,946/536/536/668; amounts 4,500/400/400/1,000; thresholds 3,298/249/400/629; routing 2,336/341/351/399; urgency 2,650/382/393/459; Polemo 2,500/100/100/100; reviews 2,420/99/99/100; CBD 1,379/100/100/100; DYK 1,127/100/100/100. Per-type counts: choice 14,857/1,576/1,587/2,418; noul 12,750/1,385/1,536/1,997; score 5,070/481/492/559. Code-computed train share: 77.3%. Bielik render/letter validation passed for retained rows; 2,173 exact duplicate task-state examples and 27 unpairable sufficiency rows were removed. The script asserts paired sufficiency labels, train/test template separation, case/split locality, and all record invariants. When a deciding fact is removed for a sufficiency negative, `tidy_removed` repairs the leftover separators (`; ;`, `: .`, …) so the removal leaves no surface trace the model could key on.
+The latest generation produced **32,677 / 3,442 / 3,615 / 4,974** train/dev/cal/test rows. Family counts in that
+order: deadlines 8,521/1,135/1,136/1,419; sufficiency 3,946/536/536/668; amounts 4,500/400/400/1,000; thresholds
+3,298/249/400/629; routing 2,336/341/351/399; urgency 2,650/382/393/459; Polemo 2,500/100/100/100; reviews
+2,420/99/99/100; CBD 1,379/100/100/100; DYK 1,127/100/100/100. Per-type counts: choice 14,857/1,576/1,587/2,418;
+noul 12,750/1,385/1,536/1,997; score 5,070/481/492/559. Code-computed train share: 77.3%. Bielik render/letter
+validation passed for retained rows; 2,173 exact duplicate task-state examples and 27 unpairable sufficiency rows
+were removed. The script asserts paired sufficiency labels, train/test template separation, case/split locality, and
+all record invariants. When a deciding fact is removed for a sufficiency negative, `tidy_removed` repairs the leftover
+separators (`; ;`, `: .`, …) so the removal leaves no surface trace the model could key on.
 
-Audits saved to `work/sft/stats.json`: gold-position histogram 0–4 = 13,518 / 16,529 / 9,112 / 4,555 / 994 (canonical order; training shuffles options); gold-flipping twin pairs = 4,557 train and 1,062 test; complete sufficiency pairs = 1,973 train, 268 dev, 268 cal, and 334 test. Strict longest-option correctness is reported per family with ties excluded: routing 23.9% (four options), sufficiency 50.0%, thresholds 50.3%, urgency 32.4% (three levels), and deadlines 50.2% on eligible rows; amounts and public families have no unique-longest eligible rows. Output files are `train.jsonl`, `dev.jsonl`, `cal.jsonl`, and `test.jsonl`.
+Audits saved to `work/sft/stats.json`: gold-position histogram 0–4 = 13,518 / 16,529 / 9,112 / 4,555 / 994
+(canonical order; training shuffles options); gold-flipping twin pairs = 4,557 train and 1,062 test; complete
+sufficiency pairs = 1,973 train, 268 dev, 268 cal, and 334 test. Strict longest-option correctness is reported per
+family with ties excluded: routing 23.9% (four options), sufficiency 50.0%, thresholds 50.3%, urgency 32.4%
+(three levels), and deadlines 50.2% on eligible rows; amounts and public families have no unique-longest eligible
+rows. Output files are `train.jsonl`, `dev.jsonl`, `cal.jsonl`, and `test.jsonl`.
 
 ## Model and pretraining
 
@@ -198,7 +247,8 @@ Open-Jev 136,017 and System-One 17,920. Dev source counts are 509 / 2,378 / 29 a
 2,898 / 102 in the same order. Train type counts (choice/noul/score) are 274,047 / 64,951 / 29,082; dev
 1,705 / 1,015 / 196; cal 1,436 / 1,291 / 273. The 100k probe is stratified by source family, type, option count
 and language. Tasksource's largest retained training family is 4,618 rows (1.25% of train); Open-Jev's largest
-WANLI family has 82,045 rows (22.3%) and is retained under the explicit full-train inclusion rule. External counts are Open-Jev test 2,228,
+WANLI family has 82,045 rows (22.3%) and is retained under the explicit full-train inclusion rule. External counts
+are Open-Jev test 2,228,
 Open-Jev OOD 1,985, System-One test 1,361 and Tasksource test 3,000 (all below the 3,000 cap).
 
 Tasksource's upstream default config has 1,028,298 train, 15,000 validation and 15,122 test rows. Of the combined
@@ -234,11 +284,13 @@ applied to the English sets they leave ECE 0.03–0.10.
 `distill/build_pool.py` decodes `work/tokens/train.bin` (mixed training documents) and source-attributed held-out
 documents from `work/tokens/val_<source>.bin`; the English FineWeb-Edu validation bin is excluded. Training bins have no
 per-document source tags, so rows use `pretrain_train_mixed` with mixed-license provenance rather than an inferred source.
-A Polish-language heuristic (at least two Polish diacritics or three Polish function words) filters both documents and candidate passages.
+A Polish-language heuristic (at least two Polish diacritics or three Polish function words) filters both documents
+and candidate passages.
 Each passage is a contiguous 400–1,500 character sentence/paragraph slice, identified by a normalized-text SHA-256;
 validation document hashes are excluded from training. Questions come from 26 Polish families, each with three
 paraphrases and content/source applicability rules; prompts are checked with `prompt.py`'s `render` and limited to 1,536
-tokens. The defaults produce 60,000 train and 2,500 eval items. Pool generation is CPU-only; `--limit N` makes each pool at most N rows.
+tokens. The defaults produce 60,000 train and 2,500 eval items. Pool generation is CPU-only; `--limit N` makes each
+pool at most N rows.
 
 The pools are unlabelled question rows over real Polish passages; any labelling process (teacher model or human) that
 writes a `target` probability vector per row can consume them. The teacher-labelling client used for the historical
@@ -448,6 +500,7 @@ Run 2026-10-14 (7.5 h, 16 workers, ~440 cases/h, 0 endpoint errors): **3,332 cas
 | category labels | none 1,791 · direct PII 903 · combining details 505 · test fixture 505 · confidential 398 · credentials 278 · special category 212 |
 
 Checks after the build:
+
 - No case or payload text is shared between train and dev/cal/test.
 - Every action label matches its option text.
 - 26 eleven-digit numbers that fail the PESEL checksum are digits inside generated Slack tokens, plus 4 extra

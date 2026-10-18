@@ -2,6 +2,7 @@
 """Merge StyloMetrix, scratch-model LM NLL, and optional textstats into quality artifacts.
 Run: pretrain/.venv/bin/python pretrain/quality/enrich.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -11,6 +12,7 @@ import sys
 import time
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -31,10 +33,13 @@ def read_jsonl(path: Path):
 
 
 def lm_features(items: list[dict], batch_size: int) -> dict[str, dict]:
+    from importlib import import_module
+
     import mlx.core as mx
-    import mlx.nn as nn
+    from mlx import nn
     from transformers import AutoTokenizer
-    from pretrain.sft import load_model
+
+    load_model = import_module("pretrain.sft").load_model
 
     model, _, _, _ = load_model(RUN)
     model.set_dtype(mx.float32)
@@ -42,7 +47,7 @@ def lm_features(items: list[dict], batch_size: int) -> dict[str, dict]:
     sequences = []
     for item in items:
         encoded = tokenizer.encode(item["text"], add_special_tokens=False)
-        ids = ([1] + encoded + [2])[:1024]
+        ids = ([1, *encoded, 2])[:1024]
         if len(ids) > 1:
             sequences.append((item["id"], ids))
     # Equal-length batches avoid padding and make fp32 results independent of batch composition.
@@ -53,7 +58,7 @@ def lm_features(items: list[dict], batch_size: int) -> dict[str, dict]:
     processed = 0
     for _, rows in sorted(by_length.items()):
         for start in range(0, len(rows), batch_size):
-            group = rows[start:start + batch_size]
+            group = rows[start : start + batch_size]
             token_ids = mx.array([ids for _, ids in group], dtype=mx.int32)
             logits, _, _ = model(token_ids)
             log_probs = nn.log_softmax(logits[:, :-1, :].astype(mx.float32), axis=-1)
@@ -61,8 +66,14 @@ def lm_features(items: list[dict], batch_size: int) -> dict[str, dict]:
             rows_nll = -mx.take_along_axis(log_probs, targets[:, :, None], axis=-1)[:, :, 0]
             mx.eval(rows_nll)
             values = np.asarray(rows_nll, dtype=np.float32)
-            for (item_id, _), nll in zip(group, values):
-                result[item_id] = {"nll_mean": float(np.mean(nll, dtype=np.float64)), "nll_p50": float(np.percentile(nll, 50)), "nll_p90": float(np.percentile(nll, 90)), "nll_std": float(np.std(nll, dtype=np.float64)), "tokens": int(len(nll))}
+            for (item_id, _), nll in zip(group, values, strict=False):
+                result[item_id] = {
+                    "nll_mean": float(np.mean(nll, dtype=np.float64)),
+                    "nll_p50": float(np.percentile(nll, 50)),
+                    "nll_p90": float(np.percentile(nll, 90)),
+                    "nll_std": float(np.std(nll, dtype=np.float64)),
+                    "tokens": len(nll),
+                }
                 processed += 1
             if processed % 100 < len(group) or processed == len(sequences):
                 print(f"LM: {processed}/{len(sequences)} documents", flush=True)
@@ -88,6 +99,7 @@ def main():
     if not items:
         parser.error("items.jsonl is empty")
     from pretrain.quality.sample import capped_text
+
     for item in items:
         if len(item["text"]) > 5_000:
             item["text"], _, _ = capped_text(item["text"])
@@ -97,7 +109,8 @@ def main():
         if metrics:
             item.setdefault("features", {})["stylometrix"] = metrics
 
-    missing = []
+    missing: list[str] = []
+    textstats: Any | None
     try:
         from pretrain.quality import textstats
     except ModuleNotFoundError as exc:
@@ -106,7 +119,10 @@ def main():
         textstats = None
     if textstats is None:
         missing = ["loop", "multilingual", "highlights"]
-        print("textstats.py is not present; skipping loop, multilingual, and highlights groups (rerun enrich.py after it lands).", flush=True)
+        print(
+            "textstats.py is not present; skipping loop, multilingual, and highlights groups (rerun enrich.py after it lands).",
+            flush=True,
+        )
     else:
         for i, item in enumerate(items, 1):
             groups = item.setdefault("features", {})
@@ -126,9 +142,16 @@ def main():
     write_atomic(items_path, "".join(json.dumps(item, ensure_ascii=False) + "\n" for item in items))
     import pyarrow as pa
     import pyarrow.parquet as pq
+
     records = []
     for item in items:
-        row = {"id": item["id"], "origin": item["origin"], "source": item["source"], "strata": json.dumps(item.get("strata", {}), ensure_ascii=False), "pipeline": json.dumps(item.get("pipeline", {}), ensure_ascii=False)}
+        row = {
+            "id": item["id"],
+            "origin": item["origin"],
+            "source": item["source"],
+            "strata": json.dumps(item.get("strata", {}), ensure_ascii=False),
+            "pipeline": json.dumps(item.get("pipeline", {}), ensure_ascii=False),
+        }
         for group, values in item.get("features", {}).items():
             if isinstance(values, dict):
                 for name, value in values.items():
@@ -139,7 +162,20 @@ def main():
     tmp = parquet.with_suffix(".parquet.tmp")
     pq.write_table(table, tmp, compression="zstd")
     os.replace(tmp, parquet)
-    print(json.dumps({"items": len(items), "stylo": sum(bool(x.get("features", {}).get("stylometrix")) for x in items), "lm": sum(bool(x.get("features", {}).get("lm")) for x in items), "textstats_missing": missing, "parquet_rows": table.num_rows, "elapsed_seconds": round(time.monotonic() - started, 2)}, ensure_ascii=False), flush=True)
+    print(
+        json.dumps(
+            {
+                "items": len(items),
+                "stylo": sum(bool(x.get("features", {}).get("stylometrix")) for x in items),
+                "lm": sum(bool(x.get("features", {}).get("lm")) for x in items),
+                "textstats_missing": missing,
+                "parquet_rows": table.num_rows,
+                "elapsed_seconds": round(time.monotonic() - started, 2),
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

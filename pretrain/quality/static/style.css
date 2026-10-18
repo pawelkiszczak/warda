@@ -1,81 +1,238 @@
-* { box-sizing: border-box }
+* {
+  box-sizing: border-box;
+}
 
-body { margin: 0; background: #f3f5f7; color: #17212b; font: 15px system-ui, sans-serif }
+body {
+  margin: 0;
+  background: #f3f5f7;
+  color: #17212b;
+  font:
+    15px system-ui,
+    sans-serif;
+}
 
 header {
-  background: #172d3c; color: white; padding: 12px 22px;
-  display: flex; align-items: center; gap: 30px;
-  position: sticky; top: 0; z-index: 2;
+  background: #172d3c;
+  color: white;
+  padding: 12px 22px;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
-h1 { font-size: 20px; margin: 0 }
-nav { display: flex; gap: 16px }
-nav a { color: #d8edff }
+h1 {
+  font-size: 20px;
+  margin: 0;
+}
+nav {
+  display: flex;
+  gap: 16px;
+}
+nav a {
+  color: #d8edff;
+}
 
 .layout {
-  display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(350px, .9fr);
-  gap: 14px; padding: 14px; align-items: start;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(350px, 0.9fr);
+  gap: 14px;
+  padding: 14px;
+  align-items: start;
 }
 
-.document, .box { background: white; border: 1px solid #d3dce2; border-radius: 8px; padding: 14px }
-.document { position: sticky; top: 58px }
+.document,
+.box {
+  background: white;
+  border: 1px solid #d3dce2;
+  border-radius: 8px;
+  padding: 14px;
+}
+.document {
+  position: sticky;
+  top: 58px;
+}
 
-.toolbar, .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px }
-.toolbar { justify-content: space-between }
+.toolbar,
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.toolbar {
+  justify-content: space-between;
+}
 
 article {
-  height: 48vh; overflow: auto; white-space: pre-wrap; line-height: 1.55;
-  border: 1px solid #d3dce2; background: #fbfcfd; padding: 14px;
+  height: 48vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  border: 1px solid #d3dce2;
+  background: #fbfcfd;
+  padding: 14px;
   font-family: system-ui, sans-serif;
 }
-article.mono { font-family: ui-monospace, monospace }
-
-button { cursor: pointer; border: 1px solid #9baeba; border-radius: 5px; background: #f5f8fa; padding: 7px 10px }
-button:hover { background: #e3edf3 }
-button.active { background: #ffdf95 }
-
-textarea { display: block; width: 100%; height: 48px; margin: 4px 0 10px }
-
-details { margin-top: 14px }
-
-aside { display: grid; gap: 12px }
-
-.box h2 { font-size: 17px; margin: 0 0 9px }
-.metric-group { border-top: 1px solid #e2e7eb; padding: 8px 0 }
-.metric { display: flex; justify-content: space-between; gap: 7px; font-size: 13px; padding: 3px }
-.metric.extreme { background: #fff1cd }
-.metric small { color: #687985 }
-
-.gauge { height: 10px; background: #e5ebef; border-radius: 7px; overflow: hidden }
-.gauge i { display: block; height: 100%; background: #e89338 }
-
-.bar { display: flex; height: 12px; background: #edf1f3; margin: 5px 0 }
-.bar i:nth-child(odd) { background: #4088b7 }
-.bar i:nth-child(even) { background: #e99c47 }
-
-.muted { color: #63727e }
-.metadata-row { margin: 4px 0; overflow-wrap: anywhere }
-mark.loop { background: #ffd58c }
-span.foreign { border-bottom: 2px solid #3693d0 }
-
-table { border-collapse: collapse; width: 100%; font-size: 12px }
-td, th { border-bottom: 1px solid #e4e8eb; padding: 3px; text-align: left }
-
-#flaglist label { margin-right: 8px; font-size: 12px; white-space: nowrap }
-#status { color: #a4262c; font-size: 13px }
-
-.chart { height: 120px; width: 100% }
-.metric-select { max-width: 100% }
-
-.bar { min-height: 20px; height: auto; align-items: stretch }
-.bar .share {
-  display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden;
-  color: white; font-size: 10px; white-space: nowrap; padding: 2px;
+article.mono {
+  font-family: ui-monospace, monospace;
 }
-.foreign-languages { margin-top: 4px }
+
+button {
+  cursor: pointer;
+  border: 1px solid #9baeba;
+  border-radius: 5px;
+  background: #f5f8fa;
+  padding: 7px 10px;
+}
+button:hover {
+  background: #e3edf3;
+}
+button.active {
+  background: #ffdf95;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  height: 48px;
+  margin: 4px 0 10px;
+}
+
+details {
+  margin-top: 14px;
+}
+
+aside {
+  display: grid;
+  gap: 12px;
+}
+
+.box h2 {
+  font-size: 17px;
+  margin: 0 0 9px;
+}
+.metric-group {
+  border-top: 1px solid #e2e7eb;
+  padding: 8px 0;
+}
+.metric {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+  font-size: 13px;
+  padding: 3px;
+}
+.metric.extreme {
+  background: #fff1cd;
+}
+.metric small {
+  color: #687985;
+}
+
+.gauge {
+  height: 10px;
+  background: #e5ebef;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.gauge i {
+  display: block;
+  height: 100%;
+  background: #e89338;
+}
+
+.bar {
+  display: flex;
+  height: 12px;
+  background: #edf1f3;
+  margin: 5px 0;
+}
+.bar i:nth-child(odd) {
+  background: #4088b7;
+}
+.bar i:nth-child(even) {
+  background: #e99c47;
+}
+
+.muted {
+  color: #63727e;
+}
+.metadata-row {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+mark.loop {
+  background: #ffd58c;
+}
+span.foreign {
+  border-bottom: 2px solid #3693d0;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+td,
+th {
+  border-bottom: 1px solid #e4e8eb;
+  padding: 3px;
+  text-align: left;
+}
+
+#flaglist label {
+  margin-right: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+#status {
+  color: #a4262c;
+  font-size: 13px;
+}
+
+.chart {
+  height: 120px;
+  width: 100%;
+}
+.metric-select {
+  max-width: 100%;
+}
+
+.bar {
+  min-height: 20px;
+  height: auto;
+  align-items: stretch;
+}
+.bar .share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  color: white;
+  font-size: 10px;
+  white-space: nowrap;
+  padding: 2px;
+}
+.foreign-languages {
+  margin-top: 4px;
+}
 
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr }
-  .document { position: static }
-  header { flex-wrap: wrap; gap: 10px }
-  article { height: 45vh }
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .document {
+    position: static;
+  }
+  header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  article {
+    height: 45vh;
+  }
 }

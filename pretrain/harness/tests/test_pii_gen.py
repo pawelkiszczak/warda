@@ -10,7 +10,7 @@ def test_generated_identifiers_pass_their_checksums():
         assert g.nip_valid(g.nip(rng))
         assert g.iban_valid(g.iban_pl(rng))
         assert g.luhn_valid(g.card(rng))
-    assert g.pesel_valid("44051401458") and not g.pesel_valid("44051401459")   # textbook example; wrong check digit
+    assert g.pesel_valid("44051401458") and not g.pesel_valid("44051401459")  # textbook example; wrong check digit
     assert not g.luhn_valid("4111 1111 1111 1112")
 
 
@@ -19,7 +19,11 @@ def test_policy_text_states_every_rule_the_labels_use():
         for policy, rules in g.POLICIES.items():
             text = g.policy_text(policy, lang)
             for category, by_class in rules.items():
-                line = next(l for l in text.splitlines() if l.startswith("- " + g.CATEGORY_RULE_NAME[lang][category]))
+                line = next(
+                    rule_line
+                    for rule_line in text.splitlines()
+                    if rule_line.startswith("- " + g.CATEGORY_RULE_NAME[lang][category])
+                )
                 for cls, action in by_class.items():
                     verb, places = g.ACTION_VERB[lang][action], g.CLASS_TEXT[lang][cls]
                     clause = next(c for c in line.split(". ", 1)[1].rstrip(".").split("; ") if c.startswith(verb + ":"))
@@ -35,9 +39,17 @@ def test_same_payload_flips_action_with_destination_and_policy():
 
 
 def test_build_items_labels_twins_and_holds_out_policy():
-    rec = {"case_id": "c000001", "index": 1, "kind": "quasi_identifying", "language": "pl", "topic": "naprawa resetu hasła",
-           "channel": "git_commit", "payload": "Fix: reset hasła (jedyna kobieta w QA, biuro w Opolu, odeszła w piątek)",
-           "safe_payload": "Fix: reset hasła", "status": "accepted"}
+    rec = {
+        "case_id": "c000001",
+        "index": 1,
+        "kind": "quasi_identifying",
+        "language": "pl",
+        "topic": "naprawa resetu hasła",
+        "channel": "git_commit",
+        "payload": "Fix: reset hasła (jedyna kobieta w QA, biuro w Opolu, odeszła w piątek)",
+        "safe_payload": "Fix: reset hasła",
+        "status": "accepted",
+    }
     items = g.build_items(rec)
     by_cat = {c: [i for i in items if i["category"] == c] for c in ("quasi_identifying", "none")}
     assert all(i["action"] == "allow" for i in by_cat["none"])

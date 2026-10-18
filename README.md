@@ -29,6 +29,45 @@ pretrain/.venv/bin/python -m pretrain.harness.pii_gen --help
 Generated data, model weights and run artefacts go to `pretrain/work/` (gitignored). Never commit real personal data,
 work data or secrets: this repository is public.
 
+## Development checks
+
+After the quick start (the venv already has `pre-commit`), install the CodeQL CLI and the Git hooks:
+
+```bash
+brew install --cask codeql
+source pretrain/.venv/bin/activate
+pre-commit install
+```
+
+Formatting, lint, typing, secret, spelling and documentation checks run on every commit; pytest and CodeQL run before
+every push. Hook tools (ShellCheck, gitleaks, Biome, ...) are installed by pre-commit itself. The pytest hook runs
+the active `python`, so keep the venv activated when committing or pushing.
+
+```bash
+pre-commit run --all-files
+pre-commit run --hook-stage pre-push --all-files
+```
+
+To skip only the CodeQL check in an emergency, use `SKIP=codeql git push`. To upload retained SARIF results manually,
+run `CODEQL_SARIF_DIR=/tmp/codeql-sarif scripts/codeql-scan.sh`, then for each result file:
+
+```bash
+codeql github upload-results --sarif=/tmp/codeql-sarif/python.sarif --repository=OWNER/REPO \
+  --ref=refs/heads/BRANCH --commit=COMMIT_SHA
+```
+
+CodeQL runs the standard code-scanning suites for Python, JavaScript and GitHub Actions on the staged tree, and fails on
+any result. Those suites treat only network input as untrusted. CodeQL has no model for plain Starlette route
+handlers, so `codeql/python-models/` marks their request data (`query_params`, `path_params`, `headers`, `cookies`,
+`url`, `json()`, `body()`, `form()`) as remote input, which brings the labelling app into scope.
+
+Rule deviations: Biome keeps its recommended rules with no exceptions. Markdownlint disables MD060 (compact table
+pipes are used throughout) and exempts tables and fenced code from the 120-character MD013 limit. Ruff and codespell
+exceptions are listed with reasons in `pyproject.toml`.
+
+`.pre-commit-config.yaml` pins every external hook revision. `.gitleaks.toml` and `detect-private-key` exclude only
+the synthetic credential generator at `pretrain/harness/pii_gen.py`.
+
 ## License
 
 Apache-2.0. See `LICENSE` and `NOTICE`.

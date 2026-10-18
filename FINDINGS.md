@@ -158,5 +158,6 @@ Further evidence that tiers 2–3 are real and that the acting model is not a re
 
 **Warda.** From Old English *weard*, "guardian". It matches the function (a gatekeeper deciding what may pass, not a
 masker), and Polish readers hear *warta*, a sentry watch.
+
 - **Known collision:** Wanda, a pruning method listed in our own tooling.
 - **Other meanings:** Warda is also a given name, Arabic for "rose".

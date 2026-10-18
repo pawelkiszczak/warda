@@ -1,0 +1,13 @@
+# CodeQL models Starlette's Request class but not plain `Route(path, endpoint)` handlers as remote-flow sources, so
+# without these rows the labelling app's HTTP input (pretrain/quality/app.py) is invisible to the security queries.
+extensions:
+  - addsTo:
+      pack: codeql/python-all
+      extensible: sourceModel
+    data:
+      - ["starlette", "Member[routing].Member[Route].Argument[1,endpoint:].Parameter[0,request:].Member[query_params]", "remote"]
+      - ["starlette", "Member[routing].Member[Route].Argument[1,endpoint:].Parameter[0,request:].Member[path_params]", "remote"]
+      - ["starlette", "Member[routing].Member[Route].Argument[1,endpoint:].Parameter[0,request:].Member[headers]", "remote"]
+      - ["starlette", "Member[routing].Member[Route].Argument[1,endpoint:].Parameter[0,request:].Member[cookies]", "remote"]
+      - ["starlette", "Member[routing].Member[Route].Argument[1,endpoint:].Parameter[0,request:].Member[url]", "remote"]
+      - ["starlette", "Member[routing].Member[Route].Argument[1,endpoint:].Parameter[0,request:].Member[json,body,form].ReturnValue.Awaited", "remote"]

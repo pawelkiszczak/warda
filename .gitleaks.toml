@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "The generator intentionally emits synthetic credential-shaped strings for detector tests."
+paths = ['''^pretrain/harness/pii_gen\.py$''']

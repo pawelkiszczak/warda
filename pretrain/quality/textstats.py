@@ -5,18 +5,111 @@ its model. Put fastText's ``lid.176.bin`` (preferred) or ``lid.176.ftz`` in
 ``pretrain/work/quality/models/``; the bin is ~126 MB and the compressed model
 is ~917 KB. fasttext-wheel's low-level binding is used for NumPy 2 compatibility.
 """
+
 from __future__ import annotations
 
-from collections import Counter
-from functools import lru_cache
+import itertools
 import re
 import zlib
+from collections import Counter
+from functools import lru_cache
 from pathlib import Path
+from typing import TypedDict
+
+
+class _SuffixState(TypedDict):
+    link: int
+    length: int
+    next: dict[str, int]
+    count: int
+
 
 MODEL_DIR = Path(__file__).resolve().parents[1] / "work" / "quality" / "models"
 
 # Common Polish function words. This is an intentionally small cue, not a language filter.
-_POLISH_STOPWORDS = frozenset("a aby albo ale aż bardziej bardzo bez bo być była były będzie było by więc dla do gdy i ich ile im inny ja jak jako jest jeszcze już ją jego jej jeśli kiedy który która które kto ma mam mi mnie może na nad nam nas nie nich nic niż o od on ona one oni ono oraz po pod przez przy się są ta tak te tego tej ten to tu w we za ze że".split())
+_POLISH_STOPWORDS = frozenset(
+    [
+        "a",
+        "aby",
+        "albo",
+        "ale",
+        "aż",
+        "bardziej",
+        "bardzo",
+        "bez",
+        "bo",
+        "być",
+        "była",
+        "były",
+        "będzie",
+        "było",
+        "by",
+        "więc",
+        "dla",
+        "do",
+        "gdy",
+        "i",
+        "ich",
+        "ile",
+        "im",
+        "inny",
+        "ja",
+        "jak",
+        "jako",
+        "jest",
+        "jeszcze",
+        "już",
+        "ją",
+        "jego",
+        "jej",
+        "jeśli",
+        "kiedy",
+        "który",
+        "która",
+        "które",
+        "kto",
+        "ma",
+        "mam",
+        "mi",
+        "mnie",
+        "może",
+        "na",
+        "nad",
+        "nam",
+        "nas",
+        "nie",
+        "nich",
+        "nic",
+        "niż",
+        "o",
+        "od",
+        "on",
+        "ona",
+        "one",
+        "oni",
+        "ono",
+        "oraz",
+        "po",
+        "pod",
+        "przez",
+        "przy",
+        "się",
+        "są",
+        "ta",
+        "tak",
+        "te",
+        "tego",
+        "tej",
+        "ten",
+        "to",
+        "tu",
+        "w",
+        "we",
+        "za",
+        "ze",
+        "że",
+    ]
+)
 _POLISH_DIACRITICS = frozenset("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
 _WORD_RE = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)*", re.UNICODE)
 _SENTENCE_RE = re.compile(r"(?<=[.!?…])(?:[\"”’)]*)\s+|\n+")
@@ -56,9 +149,9 @@ def _predict(text: str) -> tuple[str, float]:
     return label.removeprefix("__label__"), float(probability)
 
 
-MIN_LID_CHARS = 20      # alphabetic characters needed before a fastText label is trusted
-MIN_LID_PROB = 0.5      # below this the unit is "uncertain" and inherits the document's dominant language
-MAX_UNIT_CHARS = 400    # longer lines are split at sentence ends so a switch inside a line is visible
+MIN_LID_CHARS = 20  # alphabetic characters needed before a fastText label is trusted
+MIN_LID_PROB = 0.5  # below this the unit is "uncertain" and inherits the document's dominant language
+MAX_UNIT_CHARS = 400  # longer lines are split at sentence ends so a switch inside a line is visible
 
 
 def _units(text: str) -> list[tuple[int, int, str]]:
@@ -143,18 +236,22 @@ def multilingual_metrics(text: str) -> dict:
         segment_labels.append(lang)
     alpha_chars = sum(languages.values())
     shares = {lang: count / alpha_chars for lang, count in languages.items() if count} if alpha_chars else {}
-    top_lang = max(shares, key=shares.get) if shares else "unknown"
+    top_lang = max(shares, key=lambda lang: shares[lang]) if shares else "unknown"
     pl_share = shares.get("pl", 0.0)
-    switch_rate = (sum(a != b for a, b in zip(segment_labels, segment_labels[1:])) / (len(segment_labels) - 1)
-                   if len(segment_labels) > 1 else 0.0)
+    switch_rate = (
+        sum(a != b for a, b in itertools.pairwise(segment_labels)) / (len(segment_labels) - 1)
+        if len(segment_labels) > 1
+        else 0.0
+    )
 
     script_counts: Counter[str] = Counter()
     for char in text:
         if char.isalpha():
             script_counts[_script(char)] += 1
     n_script_chars = sum(script_counts.values())
-    script_shares = {name: script_counts[name] / n_script_chars if n_script_chars else 0.0
-                     for name in (*_SCRIPT_RANGES, "other")}
+    script_shares = {
+        name: script_counts[name] / n_script_chars if n_script_chars else 0.0 for name in (*_SCRIPT_RANGES, "other")
+    }
     script_mix = 1.0 - max(script_shares.values(), default=0.0) if n_script_chars else 0.0
 
     words = [word.lower() for word in _WORD_RE.findall(text)]
@@ -186,9 +283,11 @@ def _fraction_duplicate_units(units: list[str]) -> tuple[float, float, set[str]]
     n = len(nonempty)
     char_count = sum(map(len, nonempty))
     duplicate_units = [unit for unit in nonempty if unit in repeated]
-    return (len(duplicate_units) / n if n else 0.0,
-            sum(map(len, duplicate_units)) / char_count if char_count else 0.0,
-            repeated)
+    return (
+        len(duplicate_units) / n if n else 0.0,
+        sum(map(len, duplicate_units)) / char_count if char_count else 0.0,
+        repeated,
+    )
 
 
 def _ngram_char_fractions(
@@ -197,13 +296,15 @@ def _ngram_char_fractions(
     """(top, duplicate) character fractions, Gopher-style: characters covered by occurrences of the most frequent
     repeated n-gram / of any repeated n-gram, each character counted once (overlapping occurrences used to be summed,
     which pushed short repetitive texts to 1.0)."""
-    ngrams = [(tuple(tokens[index:index + size]), words[index][1], words[index + size - 1][2])
-              for index in range(max(0, len(words) - size + 1))]
+    ngrams = [
+        (tuple(tokens[index : index + size]), words[index][1], words[index + size - 1][2])
+        for index in range(max(0, len(words) - size + 1))
+    ]
     if not ngrams:
         return 0.0, 0.0
     counts = Counter(gram for gram, _, _ in ngrams)
     top = max(counts.values())
-    top_gram = max(counts, key=counts.get) if top > 1 else None
+    top_gram = max(counts, key=lambda gram: counts[gram]) if top > 1 else None
 
     def covered(spans: list[tuple[int, int]]) -> int:
         total, reach = 0, -1
@@ -220,7 +321,7 @@ def _ngram_char_fractions(
 
 def _longest_repeated_substring(text: str) -> int:
     """Longest repeated substring via a linear-time suffix automaton."""
-    states = [{"link": -1, "length": 0, "next": {}, "count": 0}]
+    states: list[_SuffixState] = [{"link": -1, "length": 0, "next": {}, "count": 0}]
     last = 0
     for char in text:
         current = len(states)
@@ -235,8 +336,14 @@ def _longest_repeated_substring(text: str) -> int:
                 states[current]["link"] = q
             else:
                 clone = len(states)
-                states.append({"link": states[q]["link"], "length": states[p]["length"] + 1,
-                              "next": states[q]["next"].copy(), "count": 0})
+                states.append(
+                    {
+                        "link": states[q]["link"],
+                        "length": states[p]["length"] + 1,
+                        "next": states[q]["next"].copy(),
+                        "count": 0,
+                    }
+                )
                 while p >= 0 and states[p]["next"].get(char) == q:
                     states[p]["next"][char] = clone
                     p = states[p]["link"]
@@ -285,13 +392,12 @@ def loop_metrics(text: str) -> dict[str, float]:
         "duplicate_line_char_fraction": line_char_fraction,
         "duplicate_paragraph_char_fraction": para_char_fraction,
     }
-    ratios = [line_fraction / .30, para_fraction / .30,
-              line_char_fraction / .20, para_char_fraction / .20]
-    for size, threshold in ((2, .20), (3, .18), (4, .16)):
+    ratios = [line_fraction / 0.30, para_fraction / 0.30, line_char_fraction / 0.20, para_char_fraction / 0.20]
+    for size, threshold in ((2, 0.20), (3, 0.18), (4, 0.16)):
         top, _ = _ngram_char_fractions(words, tokens, size, total_chars)
         result[f"top_{size}gram_char_fraction"] = top
         ratios.append(top / threshold)
-    for size, threshold in zip(range(5, 11), (.15, .14, .13, .12, .11, .10)):
+    for size, threshold in zip(range(5, 11), (0.15, 0.14, 0.13, 0.12, 0.11, 0.10), strict=False):
         _, duplicate_fraction = _ngram_char_fractions(words, tokens, size, total_chars)
         result[f"duplicate_{size}gram_char_fraction"] = duplicate_fraction
         ratios.append(duplicate_fraction / threshold)
@@ -303,10 +409,14 @@ def loop_metrics(text: str) -> dict[str, float]:
     result["line_repeat_run_max"] = float(_run_max(lines))
     sentences = [part for part in _SENTENCE_RE.split(text) if part.strip()]
     result["sentence_repeat_run_max"] = float(_run_max(sentences))
-    ratios.extend((result["longest_repeated_substring_fraction"] / .20,
-                   result["line_repeat_run_max"] / 5,
-                   result["sentence_repeat_run_max"] / 5,
-                   max(0.0, .8 - result["zlib_compression_ratio"]) / .6))
+    ratios.extend(
+        (
+            result["longest_repeated_substring_fraction"] / 0.20,
+            result["line_repeat_run_max"] / 5,
+            result["sentence_repeat_run_max"] / 5,
+            max(0.0, 0.8 - result["zlib_compression_ratio"]) / 0.6,
+        )
+    )
     result["loop_score"] = min(1.0, sum(min(1.0, max(0.0, ratio)) for ratio in ratios) / len(ratios))
     return result
 
@@ -326,17 +436,20 @@ def _merge_spans(spans: list[tuple[int, int]], limit: int = 50) -> list[list[int
 
 def highlight_spans(text: str) -> dict[str, list]:
     """Return repeated character spans and non-Polish LID segments."""
-    loop_spans: list[tuple[int, int]] = []
     _, _, repeated_lines = _fraction_duplicate_units([line for line in text.split("\n") if line.strip()])
-    for match in re.finditer(r"[^\n]+", text):
-        if match.group().strip() in repeated_lines:
-            loop_spans.append((match.start(), match.end()))
+    loop_spans = [
+        (match.start(), match.end())
+        for match in re.finditer(r"[^\n]+", text)
+        if match.group().strip() in repeated_lines
+    ]
     _, _, repeated_paragraphs = _fraction_duplicate_units(
         [paragraph for paragraph in re.split(r"\n\s*\n", text) if paragraph.strip()]
     )
-    for match in re.finditer(r"\S(?:.*?\S)?(?=\n\s*\n|$)", text, re.DOTALL):
-        if match.group().strip() in repeated_paragraphs:
-            loop_spans.append((match.start(), match.end()))
+    loop_spans.extend(
+        (match.start(), match.end())
+        for match in re.finditer(r"\S(?:.*?\S)?(?=\n\s*\n|$)", text, re.DOTALL)
+        if match.group().strip() in repeated_paragraphs
+    )
     foreign_spans: list[list] = []
     foreign_spans = [[start, end, lang] for start, end, lang, _ in _label_units(text) if lang != "pl"]
     return {"loop_spans": _merge_spans(loop_spans), "foreign_spans": foreign_spans}
@@ -350,7 +463,10 @@ METRIC_DOCS = {
     "top_2gram_char_fraction": "Document character share covered by occurrences of its most frequent repeated two-word sequence; zero if none repeat.",
     "top_3gram_char_fraction": "Document character share covered by occurrences of its most frequent repeated three-word sequence; zero if none repeat.",
     "top_4gram_char_fraction": "Document character share covered by occurrences of its most frequent repeated four-word sequence; zero if none repeat.",
-    **{f"duplicate_{n}gram_char_fraction": f"Character share covered by repeated {n}-word sequences." for n in range(5, 11)},
+    **{
+        f"duplicate_{n}gram_char_fraction": f"Character share covered by repeated {n}-word sequences."
+        for n in range(5, 11)
+    },
     "longest_repeated_substring_chars": "Length of the longest exact substring occurring at least twice.",
     "longest_repeated_substring_fraction": "Longest repeated substring length divided by document characters.",
     "zlib_compression_ratio": "UTF-8 byte length after zlib compression divided by original UTF-8 byte length.",
@@ -362,7 +478,10 @@ METRIC_DOCS = {
     "pl_share": "Predicted Polish share of alphabetic characters.",
     "n_langs_over_5pct": "Number of predicted languages with more than 5% of alphabetic characters.",
     "switch_rate": "Fraction of adjacent line/sentence units assigned different languages.",
-    **{f"{script}_share": f"Share of alphabetic characters written in Unicode {script.title()} script." for script in (*_SCRIPT_RANGES, "other")},
+    **{
+        f"{script}_share": f"Share of alphabetic characters written in Unicode {script.title()} script."
+        for script in (*_SCRIPT_RANGES, "other")
+    },
     "script_mix": "One minus the largest Unicode script share; zero means a single script.",
     "polish_diacritics_per_word": "Count of Polish-specific diacritic characters divided by word-token count.",
     "polish_diacritic_word_ratio": "Fraction of word tokens containing at least one Polish-specific diacritic.",

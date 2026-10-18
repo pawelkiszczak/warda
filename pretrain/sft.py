@@ -17,6 +17,7 @@ type fitted by NLL on `cal`; confidence thresholds for 1% / 5% target error fixe
 
 Writes `pretrain/work/runs/<name>/`: `model.safetensors`, `config.json`, `calibration.json`, `eval.json`, `sft.jsonl`.
 """
+
 import argparse
 import bisect
 import json
@@ -27,15 +28,14 @@ from collections import defaultdict
 from pathlib import Path
 
 import mlx.core as mx
-import mlx.nn as nn
 import mlx.optimizers as optim
 import numpy as np
+from mlx import nn
 from mlx.utils import tree_flatten, tree_unflatten
-from transformers import AutoTokenizer
-
 from model import Config, Model
 from prompt import LETTERS, letter_ids, render
 from train import cast_params
+from transformers import AutoTokenizer
 
 ROOT = Path(__file__).resolve().parent
 
@@ -70,13 +70,15 @@ def load_model(run):
     """Model, config, balance biases and the pointer head (None when the run has no pointer weights)."""
     checkpoint = run / "model.safetensors"
     if not checkpoint.exists():
-        raise FileNotFoundError(f"missing trained checkpoint {checkpoint}: train first "
-                                f"(or point --base/--name at a run directory that contains model.safetensors)")
+        raise FileNotFoundError(
+            f"missing trained checkpoint {checkpoint}: train first "
+            f"(or point --base/--name at a run directory that contains model.safetensors)"
+        )
     cfg = Config(**json.loads((run / "config.json").read_text())["model"])
     model = Model(cfg)
     w = mx.load(str(checkpoint))
     biases = [w.pop(f"blocks.{i}.moe.balance_bias") for i in range(cfg.layers)]
-    head = {k[len("pointer."):]: w.pop(k) for k in [k for k in w if k.startswith("pointer.")]}
+    head = {k[len("pointer.") :]: w.pop(k) for k in [k for k in w if k.startswith("pointer.")]}
     model.update(tree_unflatten(list(w.items())))
     model.set_balance_biases(biases)
     pointer = None
@@ -94,7 +96,8 @@ class Encoder:
         self.tok = tok
         probe = render(tok, "x", "y", list("abcdefghij"), lang="pl")
         self.letters = letter_ids(tok, probe, len(LETTERS))
-        assert self.letters is not None, "option letters must be single tokens at the answer position"
+        if self.letters is None:
+            raise RuntimeError("option letters must be single tokens at the answer position")
         self.cache = {}
 
     def __call__(self, item, order, cache=True):
@@ -112,7 +115,8 @@ class Encoder:
         enc = self.tok(prompt, add_special_tokens=False, return_offsets_mapping=True)
         lines = [f"{LETTERS[k]}. {o}" for k, o in enumerate(options)]
         pos = prompt.rfind("\n".join(lines))
-        assert pos >= 0, f"options block not found verbatim in the rendered prompt of {item['id']}"
+        if pos < 0:
+            raise ValueError(f"options block not found verbatim in the rendered prompt of {item['id']}")
         starts = [s for s, _ in enc.offset_mapping]
         ends = []
         for line in lines:
@@ -137,7 +141,7 @@ def batches(rows, max_tokens, rng=None, bucket=2048):
     else:
         rows = rows[:]
         rng.shuffle(rows)
-        groups = [sorted(rows[i:i + bucket], key=lambda r: len(r[0])) for i in range(0, len(rows), bucket)]
+        groups = [sorted(rows[i : i + bucket], key=lambda r: len(r[0])) for i in range(0, len(rows), bucket)]
     out = []
     for group in groups:
         cur = []
@@ -189,19 +193,29 @@ def order_rows(enc, items, orders, cache=True):
         target = it.get("target") or [1.0 if j == it["gold"] else 0.0 for j in range(k)]
         for o in orders(it):
             ids, ends = enc(it, o, cache=cache)
-            rows.append((ids, ends, len(o), o.index(it["gold"]) if it["gold"] is not None else 0, (it["id"], tuple(o)),
-                         [target[i] for i in o]))
+            rows.append(
+                (
+                    ids,
+                    ends,
+                    len(o),
+                    o.index(it["gold"]) if it["gold"] is not None else 0,
+                    (it["id"], tuple(o)),
+                    [target[i] for i in o],
+                )
+            )
     return rows
 
 
 def predict(model, pointer, enc, items, max_tokens):
     """Per item id: [canonical-order logits from the original order, from the reversed order (mapped back)]."""
-    rows = order_rows(enc, items, lambda it: [list(range(len(it["options"]))), list(reversed(range(len(it["options"]))))])
+    rows = order_rows(
+        enc, items, lambda it: [list(range(len(it["options"]))), list(reversed(range(len(it["options"]))))]
+    )
     out = {}
     for b in batches(rows, max_tokens):
         inputs, _ = collate(b)
         z = np.array(option_logits(model, pointer, enc.letters, inputs))
-        for r, zr in zip(b, z):
+        for r, zr in zip(b, z, strict=False):
             iid, order = r[4]
             k = len(order)
             canon = np.empty(k, dtype=np.float64)
@@ -218,8 +232,10 @@ def probs_at(zs, T):
 
 def fit_temperature(items, logits):
     grid = np.exp(np.linspace(math.log(0.05), math.log(20.0), 301))
-    best = min(grid, key=lambda T: -np.mean([math.log(max(probs_at(logits[it["id"]], T)[0][it["gold"]], 1e-12))
-                                             for it in items]))
+    best = min(
+        grid,
+        key=lambda T: -np.mean([math.log(max(probs_at(logits[it["id"]], T)[0][it["gold"]], 1e-12)) for it in items]),
+    )
     return float(best)
 
 
@@ -272,7 +288,7 @@ def fit_thresholds(items, logits, temps, targets=(0.01, 0.05)):
     calibration data accepted 12.4% errors on the Polish test at a 1% target."""
     probs = [probs_at(logits[it["id"]], temp_for(temps, it))[0] for it in items]
     conf = np.array([p.max() for p in probs])
-    ok = np.array([int(np.argmax(p)) == it["gold"] for p, it in zip(probs, items)])
+    ok = np.array([int(np.argmax(p)) == it["gold"] for p, it in zip(probs, items, strict=False)])
     groups = defaultdict(list)
     for i, it in enumerate(items):
         groups[temp_key(it)].append(i)
@@ -299,11 +315,20 @@ def metrics(items, logits, temps, thresholds=None):
     conf, correct = np.array(rec["conf"]), np.array(rec["correct"])
     keys = [temp_key(it) for it in items]
     bins = np.minimum((conf * 15).astype(int), 14)
-    ece = sum(abs(correct[bins == b].mean() - conf[bins == b].mean()) * (bins == b).mean()
-              for b in range(15) if (bins == b).any())
-    out = dict(n=len(items), accuracy=float(correct.mean()), chance=float(np.mean(rec["chance"])),
-               nll=float(np.mean(rec["nll"])), brier=float(np.mean(rec["brier"])), ece=float(ece),
-               flip_rate=float(np.mean(rec["flip"])))
+    ece = sum(
+        abs(correct[bins == b].mean() - conf[bins == b].mean()) * (bins == b).mean()
+        for b in range(15)
+        if (bins == b).any()
+    )
+    out = {
+        "n": len(items),
+        "accuracy": float(correct.mean()),
+        "chance": float(np.mean(rec["chance"])),
+        "nll": float(np.mean(rec["nll"])),
+        "brier": float(np.mean(rec["brier"])),
+        "ece": float(ece),
+        "flip_rate": float(np.mean(rec["flip"])),
+    }
     for tgt, by_group in (thresholds or {}).items():
         acc = conf >= np.array([by_group.get(k, by_group["all"]) for k in keys])
         out[f"coverage@{tgt}"] = float(acc.mean())
@@ -330,8 +355,6 @@ def parity(model, pointer, enc, items):
     return worst
 
 
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", required=True, help="run under pretrain/work/runs to start from (pretraining or SFT run)")
@@ -345,10 +368,19 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--eval-only", action="store_true")
     ap.add_argument("--data", type=Path, default=SFT, help="directory with {train,dev,cal,test}.jsonl")
-    ap.add_argument("--readout", choices=["pointer", "letter"], default="pointer",
-                    help="pointer: option-pointer head (default); letter: option-letter logits")
-    ap.add_argument("--extra-eval", action="append", default=[], metavar="NAME=PATH",
-                    help="additional held-out JSONL scored once with the calibrated model (repeatable)")
+    ap.add_argument(
+        "--readout",
+        choices=["pointer", "letter"],
+        default="pointer",
+        help="pointer: option-pointer head (default); letter: option-letter logits",
+    )
+    ap.add_argument(
+        "--extra-eval",
+        action="append",
+        default=[],
+        metavar="NAME=PATH",
+        help="additional held-out JSONL scored once with the calibrated model (repeatable)",
+    )
     a = ap.parse_args()
     random.seed(a.seed)
     # Batches have varying shapes; without a cap MLX keeps every freed buffer size cached and the process grows until
@@ -389,10 +421,14 @@ def main():
         steps_per_epoch = None
         total = None
         step, best = 0, (float("inf"), -1)
-        log = open(run / "sft.jsonl", "w")
+        log = (run / "sft.jsonl").open("w")
         for epoch in range(a.epochs):
-            rows = order_rows(enc, split["train"], lambda it: [random.sample(range(len(it["options"])), len(it["options"]))],
-                              cache=False)
+            rows = order_rows(
+                enc,
+                split["train"],
+                lambda it: [random.sample(range(len(it["options"])), len(it["options"]))],
+                cache=False,
+            )
             bs = batches(rows, a.max_tokens, rng=random)
             random.shuffle(bs)
             if total is None:
@@ -400,8 +436,12 @@ def main():
                 total = steps_per_epoch * a.epochs
             t0, seen, recent = time.perf_counter(), 0, []
             for b in bs:
-                lr = a.lr * (step + 1) / a.warmup if step < a.warmup else \
-                    a.lr * (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * (step - a.warmup) / max(1, total - a.warmup))))
+                lr = (
+                    a.lr * (step + 1) / a.warmup
+                    if step < a.warmup
+                    else a.lr
+                    * (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * (step - a.warmup) / max(1, total - a.warmup))))
+                )
                 for o in opt.optimizers:
                     o.learning_rate = lr
                 inputs, target = collate(b)
@@ -415,9 +455,12 @@ def main():
                 if step % 50 == 0:
                     mean = sum(recent) / len(recent)
                     recent = []
-                    print(f"epoch {epoch} step {step}/{total} loss(avg50) {mean:.4f} lr {lr:.2e} "
-                          f"{seen / (time.perf_counter() - t0):.0f} items/s", flush=True)
-                    log.write(json.dumps(dict(epoch=epoch, step=step, loss=mean, lr=lr)) + "\n")
+                    print(
+                        f"epoch {epoch} step {step}/{total} loss(avg50) {mean:.4f} lr {lr:.2e} "
+                        f"{seen / (time.perf_counter() - t0):.0f} items/s",
+                        flush=True,
+                    )
+                    log.write(json.dumps({"epoch": epoch, "step": step, "loss": mean, "lr": lr}) + "\n")
             model.update(cast_params(params["model"], mx.float32))
             model.update(tree_unflatten(list(router.items())))
             if pointer is not None:
@@ -429,7 +472,7 @@ def main():
             dev_temps = fit_temperatures(split["dev"], dev_logits)
             dev["nll_tempered"] = metrics(split["dev"], dev_logits, dev_temps)["nll"]
             print(f"epoch {epoch} dev {json.dumps(dev)}", flush=True)
-            log.write(json.dumps(dict(epoch=epoch, dev=dev)) + "\n")
+            log.write(json.dumps({"epoch": epoch, "dev": dev}) + "\n")
             log.flush()
             if dev["nll_tempered"] < best[0]:
                 best = (dev["nll_tempered"], epoch)
@@ -438,15 +481,27 @@ def main():
                 if pointer is not None:
                     w.update({f"pointer.{k}": v for k, v in tree_flatten(pointer.trainable_parameters())})
                 mx.save_safetensors(str(run / "model.safetensors"), w)
-        (run / "config.json").write_text(json.dumps(dict(model=cfg.to_dict(), sft=vars(a), base=a.base,
-                                                         best_epoch=best[1], items_train=n_train,
-                                                         steps_per_epoch=steps_per_epoch), indent=2, default=str))
+        log.close()
+        (run / "config.json").write_text(
+            json.dumps(
+                {
+                    "model": cfg.to_dict(),
+                    "sft": vars(a),
+                    "base": a.base,
+                    "best_epoch": best[1],
+                    "items_train": n_train,
+                    "steps_per_epoch": steps_per_epoch,
+                },
+                indent=2,
+                default=str,
+            )
+        )
 
     model, cfg, _, pointer = load_model(run)
     cal_logits = predict(model, pointer, enc, split["cal"], a.max_tokens)
     temps = fit_temperatures(split["cal"], cal_logits)
     thresholds = fit_thresholds(split["cal"], cal_logits, temps)
-    (run / "calibration.json").write_text(json.dumps(dict(temperatures=temps, thresholds=thresholds), indent=2))
+    (run / "calibration.json").write_text(json.dumps({"temperatures": temps, "thresholds": thresholds}, indent=2))
 
     test_logits = predict(model, pointer, enc, split["test"], a.max_tokens)
     extra = {}
@@ -454,22 +509,30 @@ def main():
         name, path = spec.split("=", 1)
         items = load_jsonl(path)
         logits = predict(model, pointer, enc, items, a.max_tokens)
-        extra[name] = dict(all=metrics(items, logits, temps, thresholds),
-                           by_type=grouped(items, logits, temps, "type"),
-                           by_language=grouped(items, logits, temps, "language"))
-    report = dict(
-        temperatures=temps, thresholds=thresholds,
-        test_uncalibrated=metrics(split["test"], test_logits, {}),
-        test=metrics(split["test"], test_logits, temps, thresholds),
-        test_by_family=grouped(split["test"], test_logits, temps, "family"),
-        test_by_type=grouped(split["test"], test_logits, temps, "type"),
-        test_by_language=grouped(split["test"], test_logits, temps, "language"),
-        router_parity_max_abs_dp=parity(model, pointer, enc, split["test"][:64]),
-        extra=extra,
-    )
+        extra[name] = {
+            "all": metrics(items, logits, temps, thresholds),
+            "by_type": grouped(items, logits, temps, "type"),
+            "by_language": grouped(items, logits, temps, "language"),
+        }
+    report = {
+        "temperatures": temps,
+        "thresholds": thresholds,
+        "test_uncalibrated": metrics(split["test"], test_logits, {}),
+        "test": metrics(split["test"], test_logits, temps, thresholds),
+        "test_by_family": grouped(split["test"], test_logits, temps, "family"),
+        "test_by_type": grouped(split["test"], test_logits, temps, "type"),
+        "test_by_language": grouped(split["test"], test_logits, temps, "language"),
+        "router_parity_max_abs_dp": parity(model, pointer, enc, split["test"][:64]),
+        "extra": extra,
+    }
     (run / "eval.json").write_text(json.dumps(report, indent=2))
-    print(json.dumps({k: report[k] for k in ("temperatures", "thresholds", "test", "test_by_type",
-                                             "router_parity_max_abs_dp")}, indent=2), flush=True)
+    print(
+        json.dumps(
+            {k: report[k] for k in ("temperatures", "thresholds", "test", "test_by_type", "router_parity_max_abs_dp")},
+            indent=2,
+        ),
+        flush=True,
+    )
     for name, r in extra.items():
         print(name, json.dumps(r["all"]), flush=True)
 
