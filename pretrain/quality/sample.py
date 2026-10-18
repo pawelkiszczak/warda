@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Reservoir-sample raw Polish and English controls into work/quality/items.jsonl.
-Run: pretrain/.venv/bin/python pretrain/quality/sample.py [--seed 42]
+Run: uv run python pretrain/quality/sample.py [--seed 42]
 """
 
 from __future__ import annotations

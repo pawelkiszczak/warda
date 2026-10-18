@@ -2,10 +2,10 @@
 
 End-to-end experiment: curate Polish (+English) pretraining data from SpeakLeash and Hugging Face following the Bielik
 reports, pretrain a 126M-parameter MoE (37M active) for 1B tokens with MLX on an M4 Max, fine-tune it into a
-typed-decision model, calibrate it and evaluate it. Environment: Python **3.12** — required, because pyarrow publishes
-no wheels past 3.13 — via `uv venv --python 3.12 pretrain/.venv && uv pip install --python pretrain/.venv/bin/python -r
-pretrain/requirements.txt` (every package is pinned to the versions installed and tested together on 3.12). Data and
-runs live in `pretrain/work/` (gitignored).
+typed-decision model, calibrate it and evaluate it. Environment: Python **3.12** (required: pyarrow publishes no wheels
+past 3.13), managed by uv from the repository root: `uv sync --locked` installs the dependencies declared in
+`pyproject.toml` at the versions locked and tested together in `uv.lock`, and every command below runs through
+`uv run`. Data and runs live in `pretrain/work/` (gitignored).
 
 ## Pretraining data
 
@@ -87,8 +87,8 @@ produces `<s> … </s>` directly.
 Per-source train/val bins, mixed bins, and SHA-256 hashes are in `work/tokens/manifest.json`. Reproduce with:
 
 ```bash
-pretrain/.venv/bin/python pretrain/data/build_tokens.py --download --download-only
-pretrain/.venv/bin/python pretrain/data/build_tokens.py
+uv run python pretrain/data/build_tokens.py --download --download-only
+uv run python pretrain/data/build_tokens.py
 ```
 
 ## Decision data
@@ -96,7 +96,7 @@ pretrain/.venv/bin/python pretrain/data/build_tokens.py
 `sft/generate.py` builds the four typed-decision JSONL splits in `work/sft/`. Run from the repository root with:
 
 ```bash
-pretrain/.venv/bin/python pretrain/sft/generate.py
+uv run python pretrain/sft/generate.py
 ```
 
 Generation is seeded and rerunnable. It produces five code-labeled Polish-first families (deadlines, VAT/discounts/instalments,
@@ -152,7 +152,7 @@ linear decay to 0 over the last 20%). Balancing: Switch-style balance loss (0.01
 114-step run (max/mean expert load ≈ 7–8 of a possible 8); with both it stays at ≈1.25.
 
 ```bash
-pretrain/.venv/bin/python pretrain/train.py --name s126m-1b --tokens 1e9 --lr 6e-4 --warmup 150 --decay-frac 0.2 \
+uv run python pretrain/train.py --name s126m-1b --tokens 1e9 --lr 6e-4 --warmup 150 --decay-frac 0.2 \
   --balance-rate 1e-2 --aux-coef 1e-2 --eval-every 200 --ckpt-every 200      # add --resume to continue
 ```
 
@@ -173,7 +173,7 @@ no external model's format, no released weights depend on it, and old local chec
 experimental templates are not compatible with it.
 
 ```bash
-pretrain/.venv/bin/python pretrain/sft.py --base s126m-1b --name s126m-1b-sft --epochs 6
+uv run python pretrain/sft.py --base s126m-1b --name s126m-1b-sft --epochs 6
 ```
 
 Readout: the letter readout (`--readout letter`) did not train at this scale. Train loss stayed at the
@@ -215,7 +215,7 @@ directory's `config.json` (params), `metrics.jsonl` / `sft.jsonl` (curves, greed
 resumes using `<run>/mlflow.json`. Browse and compare runs with:
 
 ```bash
-pretrain/.venv/bin/mlflow ui --backend-store-uri sqlite:///pretrain/work/mlflow.db --port 5000   # http://127.0.0.1:5000
+uv run mlflow ui --backend-store-uri sqlite:///pretrain/work/mlflow.db --port 5000   # http://127.0.0.1:5000
 ```
 
 ## Jev-style decision data
@@ -224,7 +224,7 @@ pretrain/.venv/bin/mlflow ui --backend-store-uri sqlite:///pretrain/work/mlflow.
 repository root with:
 
 ```bash
-pretrain/.venv/bin/python pretrain/sft/convert_jev.py
+uv run python pretrain/sft/convert_jev.py
 ```
 
 The script reads Hugging Face Parquet/JSONL directly, validates every converted prompt with the Bielik tokenizer,
@@ -298,9 +298,9 @@ runs below spoke an external serving API and has been removed with that dependen
 tooling around labelled pools:
 
 ```bash
-pretrain/.venv/bin/python pretrain/distill/build_pool.py        # build unlabelled pools from the token bins
-pretrain/.venv/bin/python pretrain/distill/verify_bielik.py     # independent Bielik-11B scoring of labelled eval rows
-pretrain/.venv/bin/python pretrain/distill/make_eval.py         # keep teacher/verifier argmax agreements
+uv run python pretrain/distill/build_pool.py        # build unlabelled pools from the token bins
+uv run python pretrain/distill/verify_bielik.py     # independent Bielik-11B scoring of labelled eval rows
+uv run python pretrain/distill/make_eval.py         # keep teacher/verifier argmax agreements
 ```
 
 `verify_bielik.py` renders each item with `prompt.py` and averages letter-readout probabilities across both option
@@ -400,12 +400,12 @@ and lets a person label HIGH / MEDIUM / LOW while seeing those metrics. Design: 
 
 | Step | Command | Time | Resumable |
 |---|---|---:|---|
-| Sample ~1,000 raw documents (SpeakLeash, FineWeb-2 PL, FineWeb-Edu EN controls; stratified by SpeakLeash label and FineWeb `language_score` / `minhash_cluster_size`; 10% repetitive and 5% mixed-language quotas) | `pretrain/.venv/bin/python pretrain/quality/sample.py` | ~56 min | no (output written at the end; seed 42) |
+| Sample ~1,000 raw documents (SpeakLeash, FineWeb-2 PL, FineWeb-Edu EN controls; stratified by SpeakLeash label and FineWeb `language_score` / `minhash_cluster_size`; 10% repetitive and 5% mixed-language quotas) | `uv run python pretrain/quality/sample.py` | ~56 min | no (output written at the end; seed 42) |
 | StyloMetrix env (GPL-3.0, separate process) | `pretrain/quality/setup_stylometrix.sh` | ~5 min, 475 MB model download | — |
 | 172 StyloMetrix metrics | `pretrain/.venv-stylometrix/bin/python pretrain/quality/stylometrix_worker.py` | ~2–3 min (6 processes) | yes (skips done ids; delete `stylometrix.jsonl` after a re-sample) |
-| Merge: loop + multilingual metrics and highlights (`quality/textstats.py`), LM perplexity (`s126m-1b`), StyloMetrix → `items.jsonl` + `features.parquet` | `pretrain/.venv/bin/python pretrain/quality/enrich.py` | ~2 min | reruns in full, atomic write |
-| Labelling app | `pretrain/.venv/bin/python -m pretrain.quality.app --items pretrain/work/quality/items.jsonl --labeller <name> --port 8765` | — | labels saved per click |
-| Export | `pretrain/.venv/bin/python -m pretrain.quality.export_labels` → `work/quality/export/{labels,labels_audit}.jsonl`, `dataset.parquet` | seconds | — |
+| Merge: loop + multilingual metrics and highlights (`quality/textstats.py`), LM perplexity (`s126m-1b`), StyloMetrix → `items.jsonl` + `features.parquet` | `uv run python pretrain/quality/enrich.py` | ~2 min | reruns in full, atomic write |
+| Labelling app | `uv run python -m pretrain.quality.app --items pretrain/work/quality/items.jsonl --labeller <name> --port 8765` | — | labels saved per click |
+| Export | `uv run python -m pretrain.quality.export_labels` → `work/quality/export/{labels,labels_audit}.jsonl`, `dataset.parquet` | seconds | — |
 
 **App views:**
 
@@ -448,9 +448,9 @@ data-guard / permission-gate evidence). The guard reads a data policy, a channel
 what to do with it. All people, companies and values are fictional.
 
 ```bash
-pretrain/.venv/bin/python -m pretrain.harness.pii_gen generate --hours 7.5 --workers 16   # resumable
-pretrain/.venv/bin/python -m pretrain.harness.pii_gen build                               # items + manifest
-pretrain/.venv/bin/python -m pytest pretrain/harness/tests -q
+uv run python -m pretrain.harness.pii_gen generate --hours 7.5 --workers 16   # resumable
+uv run python -m pretrain.harness.pii_gen build                               # items + manifest
+uv run pytest pretrain/harness/tests -q
 ```
 
 - **How labels are made.** Code samples each case and fixes its ground truth: the kind of restricted data (direct PII,

@@ -5,7 +5,7 @@ predictor, compares with the teacher distribution (argmax agreement and KL(teach
 `work/distill/family_weights.json` with weight = clip(KL / mean KL, 0.5, 3) per family, for
 `build_pool.py --family-weights`.
 
-    pretrain/.venv/bin/python pretrain/distill/family_gaps.py --run jev-joint-v2 --items pretrain/work/distill/teacher_probe2.jsonl
+    uv run python pretrain/distill/family_gaps.py --run jev-joint-v2 --items pretrain/work/distill/teacher_probe2.jsonl
 """
 
 import argparse

@@ -12,8 +12,8 @@ within batches. Routers are frozen during fine-tuning (balance biases fixed) so 
 Evaluation uses both option orders (canonical + reversed) averaged; one temperature per question
 type fitted by NLL on `cal`; confidence thresholds for 1% / 5% target error fixed on `cal`, then applied once to `test`.
 
-    pretrain/.venv/bin/python pretrain/sft.py --base s126m-1b --name s126m-1b-sft
-    pretrain/.venv/bin/python pretrain/sft.py --base s126m-1b --name s126m-1b-sft --eval-only
+    uv run python pretrain/sft.py --base s126m-1b --name s126m-1b-sft
+    uv run python pretrain/sft.py --base s126m-1b --name s126m-1b-sft --eval-only
 
 Writes `pretrain/work/runs/<name>/`: `model.safetensors`, `config.json`, `calibration.json`, `eval.json`, `sft.jsonl`.
 """

@@ -89,11 +89,17 @@ repos:
       - id: markdownlint-cli2
         args: [--fix]
 
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.13.1
+    hooks:
+      - id: uv-lock
+        args: [--check]  # fail on a stale uv.lock instead of rewriting it unstaged
+
   - repo: local
     hooks:
       - id: pytest
         name: pytest
-        entry: python -m pytest pretrain -q
+        entry: uv run --locked pytest -q
         language: system
         pass_filenames: false
         always_run: true

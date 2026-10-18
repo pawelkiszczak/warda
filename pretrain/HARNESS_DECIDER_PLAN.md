@@ -125,7 +125,8 @@ Prawie wszystko darmowe i otwarte.
 
 - **Wszyscy:** Discord, repo [github.com/pawelkiszczak/warda](https://github.com/pawelkiszczak/warda) (publiczne: żadnych
   danych ani sekretów), GitHub Projects jako tablica, dokumenty w Markdown w repo.
-- **Kod:** Python 3.11+ z uv, Jupyter, pandas / DuckDB / pyarrow, pytest.
+- **Kod:** Python 3.12 z uv (zależności w `pyproject.toml`, zablokowane w `uv.lock`), Jupyter, pandas / DuckDB /
+  pyarrow, pytest.
 - **Trening:** MLX (Mac), PyTorch (NVIDIA), biblioteki Hugging Face, MLflow (lokalny zapis treningów). Opcjonalnie
   wynajem GPU (RunPod, Lambda, vast.ai).
 - **Wnętrze modelu (pod przyszły pruning):** podgląd na żywo, które warstwy, głowice uwagi i eksperci najbardziej

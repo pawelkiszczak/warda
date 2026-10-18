@@ -14,7 +14,7 @@
 joint and joint-v2 use dev/cal = Polish + stage-1 (Jev-style) dev/cal, so epoch selection and per-language
 temperatures see both languages; test is always the Polish test.
 
-    pretrain/.venv/bin/python pretrain/sft/mix_stages.py
+    uv run python pretrain/sft/mix_stages.py
 """
 
 import argparse

@@ -3,7 +3,7 @@
 Writes `work/distill/spotcheck_pl_real.md` (readable) and `spotcheck_pl_real.csv` (one row per item with empty
 `reviewer_ok` / `reviewer_answer` / `note` columns to fill in). Items are spread across question families.
 
-    pretrain/.venv/bin/python pretrain/distill/export_spotcheck.py --n 100
+    uv run python pretrain/distill/export_spotcheck.py --n 100
 """
 
 import argparse

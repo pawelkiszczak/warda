@@ -3,16 +3,16 @@
 Store: `pretrain/work/mlflow.db` (SQLite) + `pretrain/work/mlflow-artifacts/`, experiment `warda-scratch`. No account or
 network needed. View with:
 
-    pretrain/.venv/bin/mlflow ui --backend-store-uri sqlite:///pretrain/work/mlflow.db --port 5000
+    uv run mlflow ui --backend-store-uri sqlite:///pretrain/work/mlflow.db --port 5000
 
 Reads `pretrain/work/runs/<name>/`: `config.json` (params), `metrics.jsonl` (pretraining: loss, lr, grad norm, expert
 load, throughput, per-source validation loss; greedy samples become text artifacts), `sft.jsonl` (fine-tuning loss and
 per-epoch dev metrics) and `eval.json` (final metrics + the file as an artifact). Progress is kept in `<run>/mlflow.json`,
 so rerunning resumes the same MLflow run without duplicating steps. The trainers stay tracker-free.
 
-    pretrain/.venv/bin/python pretrain/track.py s126m-1b              # backfill once
-    pretrain/.venv/bin/python pretrain/track.py jev-joint-v2 --follow  # mirror a live run until it finishes
-    pretrain/.venv/bin/python pretrain/track.py --all                 # backfill every run directory
+    uv run python pretrain/track.py s126m-1b              # backfill once
+    uv run python pretrain/track.py jev-joint-v2 --follow  # mirror a live run until it finishes
+    uv run python pretrain/track.py --all                 # backfill every run directory
 """
 
 import argparse

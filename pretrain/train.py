@@ -8,8 +8,8 @@ The logged/validated `loss` is the LM cross-entropy only.
 
 Writes `pretrain/work/runs/<name>/`: `metrics.jsonl`, `ckpt/` (latest, resumable), `model.safetensors` + `config.json`.
 
-    pretrain/.venv/bin/python pretrain/train.py --name s126m-1b --tokens 1e9
-    pretrain/.venv/bin/python pretrain/train.py --name s126m-1b --tokens 1e9 --resume
+    uv run python pretrain/train.py --name s126m-1b --tokens 1e9
+    uv run python pretrain/train.py --name s126m-1b --tokens 1e9 --resume
 """
 
 import argparse

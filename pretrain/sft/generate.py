@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate validated, split-safe synthetic and public typed-decision data.
 
-Run from the repository root with pretrain/.venv/bin/python pretrain/sft/generate.py.
+Run from the repository root: `uv run python pretrain/sft/generate.py`.
 The script downloads only the four permitted KLEJ CSV datasets, builds all records,
 checks tokenizer compatibility and invariants, and writes work/sft outputs atomically.
 """

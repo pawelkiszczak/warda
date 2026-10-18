@@ -18,34 +18,39 @@ Status: research and data stage. No trained Warda model yet.
 
 ## Quick start
 
+Requires [uv](https://docs.astral.sh/uv/) (`brew install uv`). Dependencies are declared in `pyproject.toml` and
+locked in `uv.lock`; uv fetches Python 3.12 itself if it is missing.
+
 ```bash
-python3.12 -m venv pretrain/.venv && pretrain/.venv/bin/pip install -r pretrain/requirements.txt
+uv sync --locked              # creates .venv with the locked runtime + dev dependencies
 mkdir -p pretrain/work/quality/models && curl -L -o pretrain/work/quality/models/lid.176.bin \
   https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin   # language ID used by quality/ (126 MB)
-pretrain/.venv/bin/python -m pytest pretrain -q
-pretrain/.venv/bin/python -m pretrain.harness.pii_gen --help
+uv run pytest -q
+uv run python -m pretrain.harness.pii_gen --help
 ```
+
+Run every script through `uv run` (it uses `.venv` and keeps it in sync with the lock). To change dependencies, edit
+`pyproject.toml` or use `uv add` / `uv remove`, and commit the updated `uv.lock`.
 
 Generated data, model weights and run artefacts go to `pretrain/work/` (gitignored). Never commit real personal data,
 work data or secrets: this repository is public.
 
 ## Development checks
 
-After the quick start (the venv already has `pre-commit`), install the CodeQL CLI and the Git hooks:
+After the quick start (`pre-commit` is in the dev dependencies), install the CodeQL CLI and the Git hooks:
 
 ```bash
 brew install --cask codeql
-source pretrain/.venv/bin/activate
-pre-commit install
+uv run pre-commit install
 ```
 
-Formatting, lint, typing, secret, spelling and documentation checks run on every commit; pytest and CodeQL run before
-every push. Hook tools (ShellCheck, gitleaks, Biome, ...) are installed by pre-commit itself. The pytest hook runs
-the active `python`, so keep the venv activated when committing or pushing.
+Formatting, lint, typing, secret, spelling, lockfile and documentation checks run on every commit; pytest and CodeQL
+run before every push. Hook tools (ShellCheck, gitleaks, Biome, ...) are installed by pre-commit itself; the pytest
+hook runs through `uv run`, so no virtual environment has to be activated.
 
 ```bash
-pre-commit run --all-files
-pre-commit run --hook-stage pre-push --all-files
+uv run pre-commit run --all-files
+uv run pre-commit run --hook-stage pre-push --all-files
 ```
 
 To skip only the CodeQL check in an emergency, use `SKIP=codeql git push`. To upload retained SARIF results manually,
