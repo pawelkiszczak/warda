@@ -420,14 +420,17 @@ def create_app(items_path: str | Path, db_path: str | Path, labeller: str = "loc
             return JSONResponse({"available": False, "message": "textstats is not installed yet"})
         if not isinstance(text, str):
             return JSONResponse({"error": "text must be a string"}, status_code=400)
-        return JSONResponse(
-            {
+        try:
+            result = {
                 "available": True,
                 "loop": textstats.loop_metrics(text),
                 "multilingual": textstats.multilingual_metrics(text),
                 "highlights": textstats.highlight_spans(text),
             }
-        )
+        except textstats.LidUnavailableError as exc:
+            # check.js shows `message` when `available` is false; a 500 would leave the page blank.
+            return JSONResponse({"available": False, "message": str(exc)})
+        return JSONResponse(result)
 
     async def api_export(request: Request):
         rows = latest_rows()

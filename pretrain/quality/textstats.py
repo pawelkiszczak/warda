@@ -122,16 +122,22 @@ _SCRIPT_RANGES = {
 }
 
 
+class LidUnavailableError(RuntimeError):
+    """fastText language ID cannot run: the library or the model file is missing."""
+
+
 def _load_lid():
     try:
         import fasttext
     except ImportError as exc:
-        raise RuntimeError("LID requires fasttext-wheel; install it in the main pretrain environment") from exc
+        raise LidUnavailableError("LID requires fasttext-wheel; run `uv sync --locked`") from exc
     for filename in ("lid.176.bin", "lid.176.ftz"):
         path = MODEL_DIR / filename
         if path.is_file():
             return fasttext.load_model(str(path))
-    raise FileNotFoundError(f"No fastText LID model in {MODEL_DIR} (expected lid.176.bin or lid.176.ftz)")
+    raise LidUnavailableError(
+        f"No fastText LID model in {MODEL_DIR} (expected lid.176.bin or lid.176.ftz; see the README quick start)"
+    )
 
 
 @lru_cache(maxsize=1)

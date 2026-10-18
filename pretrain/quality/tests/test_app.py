@@ -168,3 +168,21 @@ def test_optional_parquet_join(tmp_path, monkeypatch):
     export(items, db, out)
     joined = pq.read_table(out / "dataset.parquet")
     assert joined.column("extra_feature").to_pylist() == [0.75, None]
+
+
+def test_check_reports_missing_lid_model_instead_of_failing(tmp_path, monkeypatch):
+    from pretrain.quality import textstats
+
+    items = tmp_path / "items.jsonl"
+    fixture_items(items)
+    monkeypatch.setattr(textstats, "MODEL_DIR", tmp_path / "no-models")
+    textstats._lid_model.cache_clear()
+    try:
+        with TestClient(create_app(items, tmp_path / "labels.sqlite")) as client:
+            response = client.post("/api/check", json={"text": "Wczoraj rano mieszkańcy Warszawy spotkali się."})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["available"] is False
+        assert str(tmp_path / "no-models") in body["message"]
+    finally:
+        textstats._lid_model.cache_clear()  # later tests must load the real model again

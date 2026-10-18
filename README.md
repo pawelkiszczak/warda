@@ -46,7 +46,9 @@ uv run pre-commit install
 
 Formatting, lint, typing, secret, spelling, lockfile and documentation checks run on every commit; pytest and CodeQL
 run before every push. Hook tools (ShellCheck, gitleaks, Biome, ...) are installed by pre-commit itself; the pytest
-hook runs through `uv run`, so no virtual environment has to be activated.
+hook runs through `uv run`, so no virtual environment has to be activated. The push hooks call `uv` and `codeql`
+from your `PATH`: GUI Git clients that don't load your shell profile may not find `/opt/homebrew/bin`, so push from a
+terminal or add that directory to the client's environment.
 
 ```bash
 uv run pre-commit run --all-files
