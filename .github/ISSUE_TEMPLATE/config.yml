@@ -3,3 +3,6 @@ contact_links:
   - name: How tasks are structured
     url: https://github.com/pawelkiszczak/warda/blob/main/docs/issues/README.md
     about: Read how tasks are structured before filing one
+  - name: How to contribute
+    url: https://github.com/pawelkiszczak/warda/blob/main/CONTRIBUTING.md
+    about: Workflow, branches, PR templates, and keeping docs, issues and the board up to date

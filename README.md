@@ -15,6 +15,10 @@ Status: research and data stage. No trained Warda model yet.
 - `pretrain/`: scratch-model experiments: data pipeline (`data/`), MoE model and pretraining (`model.py`, `train.py`),
   decision fine-tuning (`sft.py`, `sft/`), distillation (`distill/`), text-quality labelling tool (`quality/`).
   Details and results: `pretrain/README.md`.
+- `CONTRIBUTING.md`: how to work here — task board, branches, PRs and PR templates, keeping docs, issues and the
+  board up to date.
+- `docs/issues/`: the task catalogue (one file per GitHub issue), synced by `scripts/issues_sync.py`; board:
+  [Warda project](https://github.com/users/pawelkiszczak/projects/2).
 
 ## Quick start
 

@@ -1,11 +1,13 @@
-"""Lint the task catalogue in docs/issues/ and mirror it to GitHub issues through the `gh` CLI.
+"""Lint the task catalogue in docs/issues/ and mirror it to GitHub issues and the project board through the `gh` CLI.
 
     uv run python scripts/issues_sync.py lint
-    uv run python scripts/issues_sync.py sync [--repo OWNER/NAME] [--dry-run] [--only P0-01,P0-02]
+    uv run python scripts/issues_sync.py sync [--repo OWNER/NAME] [--dry-run] [--only P0-01,P0-02] [--no-project]
 
 The markdown files are the source of truth. `sync` creates missing labels and milestones, creates issues for files
 whose `github_issue` is 0 (writing the new number back into the file), then rewrites every issue's title, body,
-labels and milestone from its file so dependency links resolve to issue numbers.
+labels and milestone from its file so dependency links resolve to issue numbers. Finally it adds every issue to the
+project board, sets the Phase / Team / Hardware / Estimate fields from the file and puts cards without a status in
+Backlog. Every Status move after that is made by people (CONTRIBUTING.md says when a card may go to Ready).
 """
 
 from __future__ import annotations
@@ -21,6 +23,15 @@ from pathlib import Path
 
 ISSUES_DIR = Path(__file__).resolve().parents[1] / "docs/issues"
 DEFAULT_REPO = "pawelkiszczak/warda"
+PROJECT_TITLE = "Warda"
+PROJECT_DESCRIPTION = "Warda task board: one card per task in docs/issues/. How to work: CONTRIBUTING.md."
+PROJECT_README = (
+    "Cards mirror `docs/issues/` in pawelkiszczak/warda and are synced by `scripts/issues_sync.py`.\n\n"
+    "Status: Backlog (new; prerequisites not confirmed) → Ready (dependencies closed, gate PASS recorded where a gate "
+    "is a prerequisite, scope reviewed) → In progress (has an assignee) → Review (PR open) → "
+    "Done (PR merged).\n\nPhase, Team, Hardware and Estimate come from the task file; change them there, not here.\n\n"
+    "Workflow: https://github.com/pawelkiszczak/warda/blob/main/CONTRIBUTING.md\n"
+)
 
 SECTIONS = [
     "## Context",
@@ -245,16 +256,210 @@ def ensure_milestones(repo: str) -> dict[str, int]:
     return numbers
 
 
+STATUS_OPTIONS: list[tuple[str, str, str]] = [
+    ("Backlog", "GRAY", "Not ready: dependencies open or scope unclear"),
+    ("Ready", "BLUE", "Prerequisites confirmed and scope reviewed; can be picked up"),
+    ("In progress", "YELLOW", "Has an assignee and is being worked on"),
+    ("Review", "PURPLE", "PR open and awaiting review"),
+    ("Done", "GREEN", "PR merged, issue closed"),
+]
+SELECT_FIELDS: dict[str, list[str]] = {
+    "Phase": [str(n) for n in range(6)],
+    "Team": TEAMS,
+    "Hardware": list(HARDWARE_TEXT),
+}
+NUMBER_FIELDS = ["Estimate"]
+# Views are created once by name and then left alone, so people can tune sorting/grouping in the UI.
+VIEWS: list[tuple[str, str, str]] = [  # name, layout, filter
+    ("All tasks", "TABLE_LAYOUT", ""),
+    ("Board", "BOARD_LAYOUT", ""),
+    ("Ready on a laptop", "TABLE_LAYOUT", "status:Ready hardware:laptop"),
+    ("Needs strong compute", "TABLE_LAYOUT", "hardware:strong,cloud"),
+]
+VIEW_FIELDS = ["Title", "Status", "Assignees", "Phase", "Team", "Hardware", "Estimate", "Milestone", "Labels"]
+
+
+@dataclass(frozen=True)
+class Project:
+    number: int
+    id: str
+    owner: str
+    fields: dict[str, str]  # field name -> field id
+    options: dict[str, dict[str, str]]  # single-select field name -> option name -> option id
+
+
+def project_values(issue: Issue) -> dict[str, str | float]:
+    team = next(label for label in issue.labels if label.startswith("team:")).removeprefix("team:")
+    return {"Phase": str(issue.phase), "Team": team, "Hardware": issue.hardware, "Estimate": issue.estimate_hours}
+
+
+def _project_fields(owner: str, number: int) -> list[dict]:
+    return json.loads(
+        gh(["project", "field-list", str(number), "--owner", owner, "--format", "json", "--limit", "100"])
+    )["fields"]
+
+
+def ensure_project(repo: str) -> Project:
+    owner = repo.split("/", maxsplit=1)[0]
+    projects = json.loads(gh(["project", "list", "--owner", owner, "--format", "json", "--limit", "100"]))["projects"]
+    row = next((p for p in projects if p["title"] == PROJECT_TITLE and not p["closed"]), None)
+    if row is None:
+        row = json.loads(gh(["project", "create", "--owner", owner, "--title", PROJECT_TITLE, "--format", "json"]))
+        gh(["project", "link", str(row["number"]), "--owner", owner, "--repo", repo])
+        print(f"project created {row['url']}")
+    number = row["number"]
+    if not row.get("public"):
+        gh(["project", "edit", str(number), "--owner", owner, "--visibility", "PUBLIC"])
+    if row.get("shortDescription") != PROJECT_DESCRIPTION or row.get("readme") != PROJECT_README:
+        gh(["project", "edit", str(number), "--owner", owner, "--description", PROJECT_DESCRIPTION])
+        gh(["project", "edit", str(number), "--owner", owner, "--readme", PROJECT_README])
+
+    fields = {f["name"]: f for f in _project_fields(owner, number)}
+    changed = False
+    for name, options in SELECT_FIELDS.items():
+        if name not in fields:
+            gh(
+                [
+                    "project",
+                    "field-create",
+                    str(number),
+                    "--owner",
+                    owner,
+                    "--name",
+                    name,
+                    "--data-type",
+                    "SINGLE_SELECT",
+                    "--single-select-options",
+                    ",".join(options),
+                ]
+            )
+            changed = True
+        elif missing := [o for o in options if o not in {opt["name"] for opt in fields[name]["options"]}]:
+            raise SystemExit(f"project field {name} lacks options {missing}; add them in the project settings")
+    for name in NUMBER_FIELDS:
+        if name not in fields:
+            gh(["project", "field-create", str(number), "--owner", owner, "--name", name, "--data-type", "NUMBER"])
+            changed = True
+    status = fields["Status"]
+    if [o["name"] for o in status["options"]] != [name for name, _, _ in STATUS_OPTIONS]:
+        graphql(
+            "mutation($f: ID!, $o: [ProjectV2SingleSelectFieldOptionInput!]) {"
+            " updateProjectV2Field(input: {fieldId: $f, singleSelectOptions: $o}) { clientMutationId } }",
+            f=status["id"],
+            o=[{"name": n, "color": c, "description": d} for n, c, d in STATUS_OPTIONS],
+        )
+        changed = True
+    if changed:
+        fields = {f["name"]: f for f in _project_fields(owner, number)}
+    ensure_views(row["id"], {name: f["id"] for name, f in fields.items()})
+    return Project(
+        number=number,
+        id=row["id"],
+        owner=owner,
+        fields={name: f["id"] for name, f in fields.items()},
+        options={name: {o["name"]: o["id"] for o in f.get("options", [])} for name, f in fields.items()},
+    )
+
+
+def graphql(query: str, **variables: object) -> dict:
+    return json.loads(
+        gh(["api", "graphql", "--input", "-"], input=json.dumps({"query": query, "variables": variables}))
+    )
+
+
+def ensure_views(project_id: str, field_ids: dict[str, str]) -> None:
+    nodes = graphql(
+        "query($p: ID!) { node(id: $p) { ... on ProjectV2 { views(first: 50) { nodes { id name } } } } }", p=project_id
+    )["data"]["node"]["views"]["nodes"]
+    existing = {n["name"]: n["id"] for n in nodes}
+    visible = [field_ids[name] for name in VIEW_FIELDS if name in field_ids]
+    for name, layout, view_filter in VIEWS:
+        if name in existing:
+            continue
+        if name == VIEWS[0][0] and list(existing) == ["View 1"]:
+            view_id = existing.pop("View 1")  # rename the default view of a fresh project
+        else:
+            view_id = graphql(
+                "mutation($p: ID!, $n: String!, $l: ProjectV2ViewLayout!) {"
+                " createProjectV2View(input: {projectId: $p, name: $n, layout: $l}) { projectV2View { id } } }",
+                p=project_id,
+                n=name,
+                l=layout,
+            )["data"]["createProjectV2View"]["projectV2View"]["id"]
+        graphql(
+            "mutation($v: ID!, $n: String, $l: ProjectV2ViewLayout, $f: String, $c: ProjectV2ViewConfigurationInput) {"
+            " updateProjectV2View(input: {viewId: $v, name: $n, layout: $l, filter: $f, configuration: $c})"
+            " { clientMutationId } }",
+            v=view_id,
+            n=name,
+            l=layout,
+            f=view_filter,
+            c={"visibleFieldIds": visible},
+        )
+        print(f"project view created {name}")
+
+
+def _set_field(project: Project, item_id: str, field: str, value: str | float) -> None:
+    args = ["project", "item-edit", "--id", item_id, "--project-id", project.id, "--field-id", project.fields[field]]
+    if project.options.get(field):
+        args += ["--single-select-option-id", project.options[field][str(value)]]
+    else:
+        args += ["--number", f"{value:g}"]
+    gh(args)
+
+
+def sync_project(repo: str, project: Project, issues: list[Issue], numbers: dict[str, int]) -> None:
+    listing = gh(
+        ["project", "item-list", str(project.number), "--owner", project.owner, "--format", "json", "--limit", "1000"]
+    )
+    items = {
+        row["content"]["number"]: row
+        for row in json.loads(listing)["items"]
+        if row.get("content", {}).get("repository") == repo and "number" in row["content"]
+    }
+    for issue in issues:
+        number = numbers[issue.id]
+        item = items.get(number)
+        added = item is None
+        if item is None:
+            url = f"https://github.com/{repo}/issues/{number}"
+            item = json.loads(
+                gh(
+                    [
+                        "project",
+                        "item-add",
+                        str(project.number),
+                        "--owner",
+                        project.owner,
+                        "--url",
+                        url,
+                        "--format",
+                        "json",
+                    ]
+                )
+            )
+        changes = [field for field, value in project_values(issue).items() if item.get(field.lower()) != value]
+        for field in changes:
+            _set_field(project, item["id"], field, project_values(issue)[field])
+        if not item.get("status"):  # only cards without a status; people own every status move after that
+            _set_field(project, item["id"], "Status", "Backlog")
+            changes.append("Status=Backlog")
+        if added or changes:
+            print(f"project {'added' if added else 'updated'} #{number} {issue.id} {', '.join(changes)}".rstrip())
+
+
 def write_number(path: Path, number: int) -> None:
     text = path.read_text(encoding="utf-8")
     path.write_text(re.sub(r"^github_issue = \d+$", f"github_issue = {number}", text, count=1, flags=re.M), "utf-8")
 
 
-def sync(repo: str, issues: list[Issue], dry_run: bool, only: set[str] | None = None) -> None:
+def sync(repo: str, issues: list[Issue], dry_run: bool, only: set[str] | None = None, project: bool = True) -> None:
     selected = [i for i in issues if only is None or i.id in only]
     numbers = {i.id: i.github_issue for i in issues}
     if dry_run:
         print(f"would ensure {len(LABELS)} labels and {len(MILESTONES)} milestones on {repo}")
+        if project:
+            print(f"would sync {len(selected)} items to project {PROJECT_TITLE!r}")
     else:
         ensure_labels(repo)
         ensure_milestones(repo)
@@ -283,16 +488,19 @@ def sync(repo: str, issues: list[Issue], dry_run: bool, only: set[str] | None = 
         args += ["--body-file", "-", "--milestone", issue.milestone, "--add-label", ",".join(labels_for(issue))]
         gh(args, input=render_body(issue, numbers))
         print(f"updated #{number} {issue.id} {issue.title}")
+    if project and not dry_run:
+        sync_project(repo, ensure_project(repo), selected, numbers)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("lint", help="validate docs/issues/")
-    sync_p = sub.add_parser("sync", help="create/update labels, milestones and issues on GitHub")
+    sync_p = sub.add_parser("sync", help="create/update labels, milestones, issues and project cards on GitHub")
     sync_p.add_argument("--repo", default=DEFAULT_REPO)
     sync_p.add_argument("--dry-run", action="store_true")
     sync_p.add_argument("--only", help="comma-separated issue ids")
+    sync_p.add_argument("--no-project", action="store_true", help="skip the project board")
     args = parser.parse_args(argv)
 
     issues = load_all()
@@ -304,7 +512,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ok: {len(issues)} issues")
         return 0
     only = set(args.only.split(",")) if args.only else None
-    sync(args.repo, issues, args.dry_run, only)
+    sync(args.repo, issues, args.dry_run, only, project=not args.no_project)
     return 0
 
 

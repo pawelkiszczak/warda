@@ -20,5 +20,13 @@ and run the sync; do not edit issue bodies on GitHub.
 ```bash
 uv run python scripts/issues_sync.py lint                 # validates the catalogue (also runs in pytest)
 uv run python scripts/issues_sync.py sync --dry-run       # shows what would change on GitHub
-uv run python scripts/issues_sync.py sync                 # creates/updates labels, milestones, issues
+uv run python scripts/issues_sync.py sync                 # creates/updates labels, milestones, issues, project cards
 ```
+
+## Board
+
+[Warda project](https://github.com/users/pawelkiszczak/projects/2), created and filled by `sync`: one card per issue,
+fields Status (`Backlog`, `Ready`, `In progress`, `Review`, `Done`), Phase, Team, Hardware, Estimate; views
+"All tasks", "Board", "Ready on a laptop", "Needs strong compute". `sync` sets every field except Status from the
+file and puts new cards in `Backlog`; every Status move after that is made by people. When a card may go to `Ready`
+and how to run `sync`: `CONTRIBUTING.md`.

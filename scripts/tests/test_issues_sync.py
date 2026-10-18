@@ -1,9 +1,22 @@
+import json
 from pathlib import Path
 
 import pytest
 
 from scripts import issues_sync
-from scripts.issues_sync import MILESTONES, SECTIONS, Issue, lint, load_all, parse_issue, render_body
+from scripts.issues_sync import (
+    HARDWARE_TEXT,
+    MILESTONES,
+    SECTIONS,
+    TEAMS,
+    Issue,
+    Project,
+    lint,
+    load_all,
+    parse_issue,
+    project_values,
+    render_body,
+)
 
 BODY = "\n\n".join(f"{heading}\n\ntext" for heading in SECTIONS)
 
@@ -144,7 +157,7 @@ def test_sync_creates_then_edits_and_writes_number_back(tmp_path: Path, monkeypa
     monkeypatch.setattr(issues_sync, "gh", fake_gh)
     first = write_issue(tmp_path, "P0-01")
     second = write_issue(tmp_path, "P0-02", depends_on='["P0-01"]')
-    issues_sync.sync("owner/repo", [parse_issue(first), parse_issue(second)], dry_run=False)
+    issues_sync.sync("owner/repo", [parse_issue(first), parse_issue(second)], dry_run=False, project=False)
 
     assert parse_issue(first).github_issue == 41
     assert parse_issue(second).github_issue == 42
@@ -153,3 +166,69 @@ def test_sync_creates_then_edits_and_writes_number_back(tmp_path: Path, monkeypa
     edits = [c for c in calls if c[0][:2] == ["issue", "edit"]]
     assert [c[0][2] for c in edits] == ["41", "42"]
     assert "- P0-01 — #41" in (edits[1][1] or "")
+
+
+PROJECT = Project(
+    number=2,
+    id="PVT",
+    owner="owner",
+    fields={"Phase": "F-phase", "Team": "F-team", "Hardware": "F-hw", "Estimate": "F-est", "Status": "F-status"},
+    options={
+        "Phase": {str(n): f"o-phase-{n}" for n in range(6)},
+        "Team": {t: f"o-team-{t}" for t in TEAMS},
+        "Hardware": {h: f"o-hw-{h}" for h in HARDWARE_TEXT},
+        "Estimate": {},
+        "Status": {s: f"o-status-{s}" for s, _, _ in issues_sync.STATUS_OPTIONS},
+    },
+)
+
+
+def test_project_values_come_from_the_file(tmp_path: Path) -> None:
+    issue = parse_issue(write_issue(tmp_path, "P3-01", hardware='"strong"', estimate_hours="8"))
+    assert project_values(issue) == {"Phase": "3", "Team": "tools", "Hardware": "strong", "Estimate": 8}
+
+
+def test_sync_project_adds_cards_sets_fields_and_never_moves_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    in_sync = {"phase": "0", "team": "tools", "hardware": "laptop", "estimate": 4}
+    listing = {
+        "items": [
+            # A person moved it to In progress -> status untouched, fields already match -> no edits.
+            {"id": "I41", "status": "In progress", "content": {"number": 41, "repository": "owner/repo"}, **in_sync},
+            # Backlog with a stale estimate -> estimate fixed, status stays Backlog even though its dependency is closed.
+            {"id": "I43", "status": "Backlog", "content": {"number": 43, "repository": "owner/repo"}, **in_sync}
+            | {"estimate": 2},
+            # A card from another repository with the same number is ignored.
+            {"id": "X42", "status": "Done", "content": {"number": 42, "repository": "other/repo"}},
+        ]
+    }
+    calls: list[list[str]] = []
+
+    def fake_gh(args: list[str], *, input: str | None = None) -> str:
+        calls.append(args)
+        if args[:2] == ["project", "item-list"]:
+            return json.dumps(listing)
+        if args[:2] == ["project", "item-add"]:
+            return json.dumps({"id": "I42"})
+        return ""
+
+    monkeypatch.setattr(issues_sync, "gh", fake_gh)
+    issues = [
+        parse_issue(write_issue(tmp_path, "P0-01")),
+        parse_issue(write_issue(tmp_path, "P0-02")),
+        parse_issue(write_issue(tmp_path, "P0-03", depends_on='["P0-01"]')),
+    ]
+    issues_sync.sync_project("owner/repo", PROJECT, issues, {"P0-01": 41, "P0-02": 42, "P0-03": 43})
+
+    added = [c for c in calls if c[:2] == ["project", "item-add"]]
+    assert [c[c.index("--url") + 1] for c in added] == ["https://github.com/owner/repo/issues/42"]
+    edits = {(c[3], c[7], c[9]) for c in calls if c[:2] == ["project", "item-edit"]}
+    assert edits == {
+        ("I42", "F-phase", "o-phase-0"),
+        ("I42", "F-team", "o-team-tools"),
+        ("I42", "F-hw", "o-hw-laptop"),
+        ("I42", "F-est", "4"),
+        ("I42", "F-status", "o-status-Backlog"),
+        ("I43", "F-est", "4"),
+    }
