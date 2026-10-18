@@ -6,7 +6,7 @@ milestone = "Phase 5 — Shadow mode and gate 4 (weeks 16–20)"
 depends_on = ["P5-01"]
 estimate_hours = 4
 hardware = "laptop"
-github_issue = 0
+github_issue = 46
 +++
 
 ## Context

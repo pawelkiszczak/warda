@@ -6,7 +6,7 @@ milestone = "Phase 0 — Kick-off (weeks 1–2)"
 depends_on = []
 estimate_hours = 5
 hardware = "laptop"
-github_issue = 0
+github_issue = 6
 +++
 
 ## Context

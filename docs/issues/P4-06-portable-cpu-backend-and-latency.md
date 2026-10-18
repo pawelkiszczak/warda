@@ -6,7 +6,7 @@ milestone = "Phase 4 — Integrations (weeks 13–16)"
 depends_on = ["P3-03", "P0-07"]
 estimate_hours = 8
 hardware = "laptop"
-github_issue = 0
+github_issue = 41
 +++
 
 ## Context

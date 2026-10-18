@@ -6,7 +6,7 @@ milestone = "Phase 3 — Decision training and gates 2–3 (weeks 10–13)"
 depends_on = ["P2-01", "P2-02", "P0-06"]
 estimate_hours = 8
 hardware = "strong"
-github_issue = 0
+github_issue = 28
 +++
 
 ## Context

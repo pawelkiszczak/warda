@@ -6,7 +6,7 @@ milestone = "Phase 1 — Data and trials (weeks 2–6)"
 depends_on = ["P0-03", "P0-04", "P1-08"]
 estimate_hours = 8
 hardware = "laptop"
-github_issue = 0
+github_issue = 20
 +++
 
 ## Context

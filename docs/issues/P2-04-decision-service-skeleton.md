@@ -6,7 +6,7 @@ milestone = "Phase 2 — Base training and service skeleton (weeks 6–10)"
 depends_on = ["P1-01", "P2-03"]
 estimate_hours = 8
 hardware = "laptop"
-github_issue = 0
+github_issue = 25
 +++
 
 ## Context
