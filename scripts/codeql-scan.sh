@@ -51,7 +51,8 @@ for language in "${languages[@]}"; do
     model_args=(--additional-packs="$tmpdir/src/codeql" --model-packs="warda/$language-models")
   fi
   if ! codeql database analyze "$tmpdir/db/$language" "codeql/$language-queries:codeql-suites/$language-code-scanning.qls" \
-    ${model_args[@]+"${model_args[@]}"} --download --format=sarif-latest --output="$sarif" --threads=0 --quiet \
+    ${model_args[@]+"${model_args[@]}"} --download --format=sarif-latest --sarif-category="/language:$language" \
+    --output="$sarif" --threads=0 --quiet \
     >"$tmpdir/codeql.log" 2>&1; then
     cat "$tmpdir/codeql.log" >&2
     exit 1
