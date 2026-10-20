@@ -80,7 +80,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--variant", choices=sorted(MODELS), default="bin", help="bin (default) or the small ftz")
     args = parser.parse_args()
-    path, downloaded = fetch(args.variant)
+    try:
+        path, downloaded = fetch(args.variant)
+    except (requests.RequestException, ValueError) as exc:
+        raise SystemExit(f"fetch_lid: could not install {MODELS[args.variant][0]}: {exc}") from exc
     print(f"{'downloaded and verified' if downloaded else 'already present and verified'}: {path}", flush=True)
 
 
