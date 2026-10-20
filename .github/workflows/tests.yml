@@ -26,10 +26,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
       - name: Download fastText LID model
-        run: |
-          mkdir -p pretrain/work/quality/models
-          curl -sfL --retry 3 -o pretrain/work/quality/models/lid.176.ftz \
-            https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.ftz
+        run: uv run --locked python -m pretrain.quality.fetch_lid --variant ftz
       - name: Run tests
         env:
           HF_HUB_OFFLINE: "1"

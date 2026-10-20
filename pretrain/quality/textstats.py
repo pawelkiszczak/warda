@@ -1,9 +1,10 @@
 """Fast, language-agnostic loop and Polish/multilingual signals for quality review.
 
 LID is deliberately lazy: importing the package never imports StyloMetrix or loads
-its model. Put fastText's ``lid.176.bin`` (preferred) or ``lid.176.ftz`` in
-``pretrain/work/quality/models/``; the bin is ~126 MB and the compressed model
-is ~917 KB. fasttext-wheel's low-level binding is used for NumPy 2 compatibility.
+its model. Fetch fastText's ``lid.176.bin`` (preferred) or ``lid.176.ftz`` into
+``pretrain/work/quality/models/`` with ``uv run python -m pretrain.quality.fetch_lid``
+(checksum-verified; the bin is ~126 MB, the compressed model ~917 KB).
+fasttext-wheel's low-level binding is used for NumPy 2 compatibility.
 """
 
 from __future__ import annotations
@@ -25,6 +26,8 @@ class _SuffixState(TypedDict):
 
 
 MODEL_DIR = Path(__file__).resolve().parents[1] / "work" / "quality" / "models"
+LID_FILENAMES = ("lid.176.bin", "lid.176.ftz")  # load order: the full model mislabels less short Polish text
+FETCH_LID_COMMAND = "uv run python -m pretrain.quality.fetch_lid"
 
 # Common Polish function words. This is an intentionally small cue, not a language filter.
 _POLISH_STOPWORDS = frozenset(
@@ -126,18 +129,22 @@ class LidUnavailableError(RuntimeError):
     """fastText language ID cannot run: the library or the model file is missing."""
 
 
+def lid_model_path() -> Path | None:
+    """The LID model file `_load_lid` would load, or None when none is present."""
+    return next((path for path in (MODEL_DIR / name for name in LID_FILENAMES) if path.is_file()), None)
+
+
 def _load_lid():
     try:
         import fasttext
     except ImportError as exc:
         raise LidUnavailableError("LID requires fasttext-wheel; run `uv sync --locked`") from exc
-    for filename in ("lid.176.bin", "lid.176.ftz"):
-        path = MODEL_DIR / filename
-        if path.is_file():
-            return fasttext.load_model(str(path))
-    raise LidUnavailableError(
-        f"No fastText LID model in {MODEL_DIR} (expected lid.176.bin or lid.176.ftz; see the README quick start)"
-    )
+    path = lid_model_path()
+    if path is None:
+        raise LidUnavailableError(
+            f"No fastText LID model in {MODEL_DIR} (expected {' or '.join(LID_FILENAMES)}); run `{FETCH_LID_COMMAND}`"
+        )
+    return fasttext.load_model(str(path))
 
 
 @lru_cache(maxsize=1)

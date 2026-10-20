@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from pretrain.quality import textstats
 from pretrain.quality.textstats import highlight_spans, loop_metrics, multilingual_metrics
 
@@ -20,6 +22,7 @@ CYRILLIC = (
 )
 
 
+@pytest.mark.requires_lid
 def test_polish_paragraph_has_polish_cues_and_low_multilingual_score():
     stats = multilingual_metrics(POLISH)
     assert stats["top_lang"] == "pl"
@@ -30,6 +33,7 @@ def test_polish_paragraph_has_polish_cues_and_low_multilingual_score():
     assert loop_metrics(POLISH)["loop_score"] < 0.5
 
 
+@pytest.mark.requires_lid
 def test_repeated_paragraph_increases_repetition_metrics_and_highlights():
     repeated = "\n\n".join([POLISH] * 5)
     clean = loop_metrics(POLISH)
@@ -47,6 +51,7 @@ def test_repeated_paragraph_increases_repetition_metrics_and_highlights():
     assert all(0 <= start < end <= len(repeated) for start, end in spans)
 
 
+@pytest.mark.requires_lid
 def test_polish_with_english_paragraph_is_multilingual_and_marks_foreign_text():
     text = POLISH + "\n\n" + ENGLISH
     stats = multilingual_metrics(text)
@@ -59,6 +64,7 @@ def test_polish_with_english_paragraph_is_multilingual_and_marks_foreign_text():
     assert any(lang == "en" and start >= len(POLISH) for start, _, lang in foreign)
 
 
+@pytest.mark.requires_lid
 def test_cyrillic_changes_script_mix_and_language_share():
     text = POLISH + "\n\n" + CYRILLIC
     stats = multilingual_metrics(text)
@@ -69,6 +75,7 @@ def test_cyrillic_changes_script_mix_and_language_share():
     assert any(script == "ru" for _, _, script in highlight_spans(text)["foreign_spans"])
 
 
+@pytest.mark.requires_lid
 def test_pure_english_is_not_misclassified_as_polish():
     stats = multilingual_metrics(ENGLISH * 2)
     assert stats["top_lang"] == "en"
@@ -88,6 +95,7 @@ def test_duplicate_ngram_fraction_counts_each_character_once():
     assert stats["top_3gram_char_fraction"] <= share + 0.02
 
 
+@pytest.mark.requires_lid
 def test_single_line_language_switches_are_not_absorbed_by_a_polish_neighbour():
     # Short lines of different languages used to be merged into one segment that read as Polish.
     text = (
@@ -102,6 +110,7 @@ def test_single_line_language_switches_are_not_absorbed_by_a_polish_neighbour():
     assert {lang for _, _, lang in highlight_spans(text)["foreign_spans"]} == {"en", "ru"}
 
 
+@pytest.mark.requires_lid
 def test_polish_name_in_english_text_does_not_make_it_polish():
     stats = multilingual_metrics(
         "The meeting with Jan Kowalski from Łódź was postponed until next week because of rain."
@@ -110,12 +119,14 @@ def test_polish_name_in_english_text_does_not_make_it_polish():
     assert stats["pl_share"] < 0.1
 
 
+@pytest.mark.requires_lid
 def test_polish_forum_post_of_short_lines_is_polish_not_unknown():
     stats = multilingual_metrics("Witam\nmam problem z autem\nnie odpala rano\nco robic?\nPozdrawiam")
     assert stats["top_lang"] == "pl"
     assert stats["multilingual_score"] < 0.2
 
 
+@pytest.mark.requires_lid
 def test_empty_and_short_text_are_safe():
     assert multilingual_metrics("")["top_lang"] == "unknown"
     assert loop_metrics("")["loop_score"] == 0
@@ -131,6 +142,7 @@ def test_loop_score_is_bounded_and_short_repeated_string_is_found():
     assert 0 <= stats["loop_score"] <= 1
 
 
+@pytest.mark.requires_lid
 def test_lid_model_loads_once_across_many_documents(monkeypatch):
     # The throughput regression that matters is reloading the fastText model per document (~100x slower). Count loads
     # instead of timing, so the check is deterministic on shared CI runners.

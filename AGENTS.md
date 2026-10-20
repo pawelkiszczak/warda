@@ -15,8 +15,7 @@ Run everything from the repo root through `uv run`.
 
 ```bash
 uv sync --locked                                   # .venv with locked runtime + dev deps
-mkdir -p pretrain/work/quality/models && curl -L -o pretrain/work/quality/models/lid.176.bin \
-  https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin   # fastText LID; quality tests need it
+uv run python -m pretrain.quality.fetch_lid        # fastText LID model, sha256-checked (--variant ftz: small)
 uv run pytest -q                                   # full suite (MLX tests skip where mlx is missing)
 WARDA_SLOW=1 uv run pytest -q                      # also slow tests: MLX model loads, network
 uv run pre-commit install                          # commit + pre-push hooks
@@ -152,8 +151,8 @@ Key contracts:
   codespell.
 - `.pre-commit-config.yaml` — pinned hooks; blocks commits to `main`, files > 500 KB, secrets, lockfile drift.
 - `.gitleaks.toml` — allowlists only `pretrain/harness/pii_gen.py` (synthetic credential-shaped strings).
-- `.github/workflows/tests.yml` — CI on push to `main` only (macOS 15 arm64): `uv sync --locked`, download
-  `lid.176.ftz`, `HF_HUB_OFFLINE=1 uv run --locked pytest -q`.
+- `.github/workflows/tests.yml` — CI on push to `main` only (macOS 15 arm64): `uv sync --locked`,
+  `fetch_lid --variant ftz`, `HF_HUB_OFFLINE=1 uv run --locked pytest -q`.
 - `.github/PULL_REQUEST_TEMPLATE/{feature,data,experiment,docs}.md` — PR templates.
 - `pretrain/README.md` — pipeline commands, data sources/licences, results. `FINDINGS.md` — decisions and findings.
 - `pretrain/QUALITY_CLASSIFIER.md`, `pretrain/HARNESS_DECIDER_PLAN.md` — design / team plan.
@@ -164,23 +163,26 @@ Key contracts:
 - **uv only**, Python `==3.12.*` (uv fetches it). Never `pip install` into `.venv`; always `uv run`.
 - Apple Silicon + MLX/MLX-LM for training; Transformers/HF Hub for tokenizers (Bielik
   `speakleash/Bielik-1.5B-v3.0-Instruct`, APT4 cached in `work/cache/`).
-- External assets not in git: fastText `pretrain/work/quality/models/lid.176.bin` (or `.ftz`), corpora, weights,
-  local LLM servers for `pii_gen`, StyloMetrix venv (`pretrain/quality/setup_stylometrix.sh` →
+- External assets not in git: fastText `pretrain/work/quality/models/lid.176.bin` (or `.ftz`; fetch with
+  `uv run python -m pretrain.quality.fetch_lid`, checksums pinned in `pretrain/quality/fetch_lid.py`), corpora,
+  weights, local LLM servers for `pii_gen`, StyloMetrix venv (`pretrain/quality/setup_stylometrix.sh` →
   `pretrain/.venv-stylometrix`).
 - CodeQL CLI (`brew install --cask codeql`) required by the pre-push hook; emergency skip: `SKIP=codeql git push`.
 - `scripts/issues_sync.py` shells out to an authenticated `gh` CLI.
 
 ## Testing & QA
 
-- pytest 9; root `conftest.py` loads the pytester plugin and skips `@pytest.mark.slow` tests unless `WARDA_SLOW=1`
-  and `@pytest.mark.requires_mlx` tests where `mlx` is absent (no `requires_mlx` tests exist yet);
-  `testpaths = ["pretrain", "scripts", "warda"]`, `pythonpath = ["."]`.
+- pytest 9; root `conftest.py` loads the pytester plugin and skips `@pytest.mark.slow` tests unless `WARDA_SLOW=1`,
+  `@pytest.mark.requires_mlx` tests where `mlx` is absent (no `requires_mlx` tests exist yet) and
+  `@pytest.mark.requires_lid` tests where the fastText LID model is missing — except under CI (`CI` set), where
+  `requires_lid` tests run and fail instead; `testpaths = ["pretrain", "scripts", "warda"]`, `pythonpath = ["."]`.
 - Tests live in `<package>/tests/test_*.py`: plain `test_*` functions with `assert`, `pytest.mark.parametrize`,
   `tmp_path`, `monkeypatch`, local fakes (e.g. fake `gh` calls). No test classes.
-- Covered: `warda/schema` and the slow marker, `harness/pii_gen`, `quality/{textstats,app}`, `sft` Englishization,
-  `scripts/issues_sync`. Not covered: `model`, `train`, `sft.py`, `prompt`, `track`, `data/`, `distill/` — verify
-  those with a real smoke run.
-- Quality tests need the fastText LID model present (no skip). PR templates mention slow tests via `WARDA_SLOW=1`.
+- Covered: `warda/schema` and the collection gates, `harness/pii_gen`, `quality/{textstats,app,fetch_lid}`, `sft`
+  Englishization, `scripts/issues_sync`. Not covered: `model`, `train`, `sft.py`, `prompt`, `track`, `data/`,
+  `distill/` — verify those with a real smoke run.
+- Mark tests that call the real LID model `@pytest.mark.requires_lid`. PR templates mention slow tests via
+  `WARDA_SLOW=1`.
 - No coverage tooling or threshold; expectation is tests for new behavior plus the manual test in the PR.
 
 ```bash

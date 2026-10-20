@@ -32,8 +32,7 @@ locked in `uv.lock`; uv fetches Python 3.12 itself if it is missing.
 
 ```bash
 uv sync --locked              # creates .venv with the locked runtime + dev dependencies
-mkdir -p pretrain/work/quality/models && curl -L -o pretrain/work/quality/models/lid.176.bin \
-  https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin   # language ID used by quality/ (126 MB)
+uv run python -m pretrain.quality.fetch_lid   # language ID used by quality/ (126 MB, sha256-checked)
 uv run pytest -q
 uv run python -m pretrain.harness.pii_gen --help
 ```
@@ -46,8 +45,9 @@ unless enabled. Turn on Developer Mode and clone with `git clone -c core.symlink
 `AGENTS.md` directly.
 
 Read [`AGENTS.md`](AGENTS.md) first: it is the contract every agent and human works against (run, layout, data
-formats, rules, hardware). Slow tests — MLX model loads, network — only run with `WARDA_SLOW=1 uv run pytest -q`; the
-fastText LID model from the step above is required setup, not a slow test (`uv run pytest -q` fails without it).
+formats, rules, hardware). Slow tests — MLX model loads, network — only run with `WARDA_SLOW=1 uv run pytest -q`.
+Without the fastText LID model, `uv run pytest -q` skips the LID tests and names the fetch command; under CI
+(`CI` set) they fail instead, so CI never loses them silently.
 
 Generated data, model weights and run artefacts go to `pretrain/work/` (gitignored). Never commit real personal data,
 work data or secrets: this repository is public.

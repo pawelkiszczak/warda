@@ -432,7 +432,8 @@ and lets a person label HIGH / MEDIUM / LOW while seeing those metrics. Design: 
   longest repeated substring, repeated-line/sentence runs → `loop_score`.
 - **Language:** fastText `lid.176.bin` per line (long lines per sentence; units with <20 letters or confidence <0.5
   use Polish cues or inherit the dominant language), character-weighted language shares, `pl_share`, `switch_rate`,
-  Unicode script mix, Polish diacritic / stopword ratios → `multilingual_score`.
+  Unicode script mix, Polish diacritic / stopword ratios → `multilingual_score`. Fetch the model with
+  `uv run python -m pretrain.quality.fetch_lid` (SHA-256 pinned); tests that need it are marked `requires_lid`.
 
 Status (2026-10-10): `work/quality/items.jsonl` holds the final sample of 988 documents. Origins: 608 SpeakLeash
 (HIGH 232 / MEDIUM 175 / LOW 201), 330 FineWeb-2 (by `language_score` band and cluster size), 50 FineWeb-Edu English

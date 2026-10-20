@@ -43,6 +43,7 @@ pythonpath = ["."]
 markers = [
     "requires_mlx: needs MLX (Apple Silicon); auto-skipped where mlx is missing",
     "slow: MLX model loads, network; runs only with WARDA_SLOW=1",
+    "requires_lid: needs the fastText LID model; skipped where missing unless CI is set (then it fails)",
 ]
 
 [tool.ruff]
@@ -71,6 +72,7 @@ ignore = ["E501", "PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR091
 "pretrain/distill/family_gaps.py" = ["T201"] # CLI metrics are intentionally printed.
 "pretrain/quality/app.py" = ["T201", "S311", "RUF003"] # CLI status and seeded examples are intentional; Mann-Whitney is conventionally punctuated.
 "pretrain/quality/enrich.py" = ["T201"] # CLI progress and summaries are intentionally printed.
+"pretrain/quality/fetch_lid.py" = ["T201"] # CLI reports whether the model was downloaded or already present.
 "pretrain/quality/export_labels.py" = ["T201"] # Export summary is intentionally printed.
 "pretrain/quality/sample.py" = ["T201", "S311", "E402"] # Sampling uses deterministic non-crypto RNG; CLI output and repository-root setup are intentional.
 "pretrain/quality/stylometrix_worker.py" = ["T201", "PLW0603"] # CLI progress and multiprocessing model globals are intentional.
