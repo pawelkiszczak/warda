@@ -80,6 +80,17 @@ destinations, channels) live in `warda/schema.py`.
 - Small PRs; tests pass before merge.
 - Agents propose, humans decide on gold labels.
 
+## Agent skills
+
+Load both skills at session start; both stay active every response at the default `full` level.
+
+- **`ponytail`** — every coding task (write, fix, refactor, review, pick deps): YAGNI, reuse code already here,
+  stdlib/installed deps before new ones, shortest working diff, root-cause fixes. It never overrides these
+  guidelines: tests for new behavior, CPU small-sample flags, seeding/resumability, input validation at trust
+  boundaries (Starlette request data) and the public-repo data rules still apply.
+- **`caveman`** — terse chat replies to the user. Chat only: code, comments, commit messages, PR/issue bodies,
+  `docs/` and other committed files stay in normal prose in the doc's existing language (see Code Conventions).
+
 ## Hardware
 
 - New scripts must have a CPU small-sample flag (`--limit`, `--hours 0.05`, ...); strong hardware is optional.
