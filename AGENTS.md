@@ -48,7 +48,8 @@ Dependencies: edit `pyproject.toml` or use `uv add` / `uv remove`; commit `uv.lo
   `cli.py` (CLI entry point, P2-06). Later phases fill the subpackages.
 - `pretrain/` — research: scratch-model experiments and dataset tooling (table below).
 - `data/` — committed synthetic datasets (later phases).
-- `docs/` — plans, ADRs, gate records and the task catalogue (`docs/issues/`).
+- `docs/` — plans, ADRs, gate records, the task catalogue (`docs/issues/`) and the Apple Silicon acceleration
+  contract (`docs/performance/APPLE_SILICON.md`: backend placement, parity and end-to-end measurement rules).
 - `pretrain/work/` — **gitignored** artefacts: tokens, runs, SFT splits, pools, caches, models, `mlflow.db`.
 
 | Path | Purpose |
