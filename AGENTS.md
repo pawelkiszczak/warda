@@ -46,7 +46,7 @@ Dependencies: edit `pyproject.toml` or use `uv add` / `uv remove`; commit `uv.lo
 
 - `warda/` — product code: `guard/` (detectors and redaction), `service/` (decision service), `hooks/` (agent
   integrations), `bench/` (evaluation harness), `label/` (labelling app), `schema.py` (shared literals and records),
-  `cli.py` (CLI entry point). Later phases fill the subpackages.
+  `cli.py` (CLI entry point, P2-06). Later phases fill the subpackages.
 - `pretrain/` — research: scratch-model experiments and dataset tooling (table below).
 - `data/` — committed synthetic datasets (later phases).
 - `docs/` — plans, ADRs, gate records and the task catalogue (`docs/issues/`).
@@ -82,7 +82,9 @@ destinations, channels) live in `warda/schema.py`.
 
 ## Hardware
 
-- Every script has a CPU small-sample flag (`--limit`, `--hours 0.05`, ...); strong hardware is optional.
+- New scripts must have a CPU small-sample flag (`--limit`, `--hours 0.05`, ...); strong hardware is optional.
+  Not yet true everywhere: `data/build_tokens.py`, `quality/enrich.py` and `quality/sample.py` have none — P1-06
+  audits every `__main__` script and adds them.
 - MLX training is Apple-silicon-only until a training port is separately scoped; non-ML tooling stays installable
   and testable on ordinary Linux/Windows laptops (MLX deps are platform-marked; tests skip MLX by capability).
 

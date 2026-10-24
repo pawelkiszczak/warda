@@ -8,9 +8,10 @@ ordered: positions are meaningful (option lines in prompts and question records)
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TypedDict
+from typing import Literal, TypedDict, get_args
 
-ACTIONS = ("allow", "redact", "ask_user", "block")
+Action = Literal["allow", "redact", "ask_user", "block"]
+ACTIONS: tuple[str, ...] = get_args(Action)  # derived, so the runtime tuple and the type cannot drift
 CATEGORIES = (
     "none",
     "direct_pii",
@@ -54,7 +55,7 @@ LANGUAGES = ("pl", "en")
 class Decision(TypedDict):
     """The typed decision a Warda decider must return."""
 
-    action: str
+    action: Action
     confidence: float
     reason: str
     redacted_payload: str | None
@@ -67,7 +68,7 @@ def _require_member(field_name: str, value: str, allowed: tuple[str, ...] | dict
         raise ValueError(f"{field_name} {value!r} is not one of: {expected}")
 
 
-@dataclass
+@dataclass(frozen=True)
 class Policy:
     """A data policy: rules per (category, destination class) plus written exception clauses."""
 
@@ -86,7 +87,7 @@ class Policy:
                 _require_member("policy.table action", action, ACTIONS)
 
 
-@dataclass
+@dataclass(frozen=True)
 class DecisionInput:
     """One outbound item to decide on. No gold fields: gold lives only in training/eval records."""
 

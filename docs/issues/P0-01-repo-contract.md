@@ -34,7 +34,8 @@ need (actions, categories, destinations, channels) currently live only in `pretr
 - Shared `Policy` dataclass in `warda/schema.py`: `id`, `language`, `text`, `table` (category → destination
   class → action), `exceptions` (list of text clauses). Shared `DecisionInput`: `payload`, `channel`,
   `destination`, `policy: Policy`, `language`, `task: str | None`, `provenance: list[str]`. No gold fields.
-  Runtime boundaries validate these fields; TypedDict annotations alone are not validation.
+  Runtime boundaries validate these fields; TypedDict annotations alone are not validation. Both are
+  `frozen=True`, so a validated record cannot be changed past `__post_init__`.
 
 - `AGENTS.md` sections, in order: "Run" (`uv sync --locked`, `uv run pytest -q`, `uv run pre-commit run
   --all-files`, `WARDA_SLOW=1 uv run pytest -q` for slow tests); "Layout" (`warda/` product code with one line per
@@ -45,12 +46,14 @@ need (actions, categories, destinations, channels) currently live only in `pretr
   `question_id`, `category`, `policy`, `destination`, `action`; link to `warda/schema.py`); "Rules" (no real
   personal data, no work data, no secrets in prompts or code; one task = one branch/worktree named
   `<issue-id>-<slug>`; small PRs; tests pass before merge; agent proposes, human decides on gold labels);
-  "Hardware" (every script has a CPU small-sample flag; strong hardware optional).
+  "Hardware" (new scripts have a CPU small-sample flag, existing gaps named and owned by P1-06; strong hardware
+  optional; README tells Windows users how to get the `CLAUDE.md` symlink).
 - `CLAUDE.md` → symlink `AGENTS.md` (pre-commit `check-symlinks` must pass).
 - `warda/__init__.py` (docstring only), `warda/schema.py` with: `ACTIONS = ("allow", "redact", "ask_user",
   "block")`, `CATEGORIES`, `DEST_CLASSES = ("internal", "client", "llm", "saas", "public")`, `DEST_CLASS: dict[str,
   str]` (the 12 destination ids from `pii_gen.DEST_CLASS`), `CHANNELS: tuple[str, ...]` (the 10 outbound channel
-  ids), `INBOUND_CHANNELS` (3 ids), `LANGUAGES = ("pl", "en")`, and `class Decision(TypedDict)`: `action: str`,
+  ids), `INBOUND_CHANNELS` (3 ids), `LANGUAGES = ("pl", "en")`, and `class Decision(TypedDict)`: `action: Action`
+  (`Action = Literal[...]`, `ACTIONS = get_args(Action)`),
   `confidence: float`, `reason: str`, `redacted_payload: str | None`, `category: str | None`. `pii_gen.py` imports
   `ACTIONS`, `CATEGORIES`,
   `DEST_CLASS` and `DEST_CLASSES` (replacing its `CLASSES`; `_rule` and `CLASS_TEXT` keep working on the same

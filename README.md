@@ -41,6 +41,10 @@ uv run python -m pretrain.harness.pii_gen --help
 Run every script through `uv run` (it uses `.venv` and keeps it in sync with the lock). To change dependencies, edit
 `pyproject.toml` or use `uv add` / `uv remove`, and commit the updated `uv.lock`.
 
+Windows: `CLAUDE.md` is a symlink to `AGENTS.md`, and Git for Windows checks symlinks out as plain text files
+unless enabled. Turn on Developer Mode and clone with `git clone -c core.symlinks=true …`, or point your agent at
+`AGENTS.md` directly.
+
 Read [`AGENTS.md`](AGENTS.md) first: it is the contract every agent and human works against (run, layout, data
 formats, rules, hardware). Slow tests — MLX model loads, network — only run with `WARDA_SLOW=1 uv run pytest -q`; the
 fastText LID model from the step above is required setup, not a slow test (`uv run pytest -q` fails without it).

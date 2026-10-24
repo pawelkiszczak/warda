@@ -1,5 +1,7 @@
 """Contract tests: the shared literals in `warda.schema` match `pii_gen` and the decision record shape."""
 
+import dataclasses
+
 import pytest
 
 from pretrain.harness import pii_gen
@@ -38,3 +40,5 @@ def test_policy_and_input_validate_their_fields() -> None:
         Policy(id="p", language="pl", text="t", table={"credential": {"internal": "yolo"}})
     with pytest.raises(ValueError, match=r"input\.channel"):
         DecisionInput(payload="x", channel="carrier_pigeon", destination="saas", policy=policy, language="pl")
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        policy.language = "de"  # type: ignore[misc]  # a validated record must not bypass __post_init__
