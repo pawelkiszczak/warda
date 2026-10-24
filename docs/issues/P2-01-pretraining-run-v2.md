@@ -28,12 +28,19 @@ one machine; the issue is about reproducibility and the record, not the hours.
 - `docs/model/PRETRAIN-v2.md`: config, corpus manifest hash, tokens/s, wall time, loss curve summary (step →
   val loss per source from `val_<source>.bin`), router balance stats (from `metrics.jsonl`), comparison row with
   the 1B reference, checkpoint path and SHA-256.
+- Use P1-05's measured MLX GPU/loading configuration and P1-12/P1-04's validated prepared corpus; verify the
+  actual execution device and record dtype, batch/accumulation, compilation and bounded prefetch settings.
+  Report completed-step tokens/s separately from full wall time including loading, evaluation and checkpoints,
+  with memory/swap and any CPU bottleneck. Avoid concurrent preprocessing that starves GPU bandwidth or memory.
+  Follow `docs/performance/APPLE_SILICON.md`; CUDA/cloud GPU is not a fallback for this MLX trainer.
 - `train.py --resume` verified once mid-run (kill and resume; loss continues without a jump).
 
 ## Definition of done
 
 - [ ] Final val loss on Polish sources ≤ the 1B reference at equal tokens (else the report explains)
 - [ ] `PRETRAIN-v2.md` complete; MLflow run visible with `track.py`
+- [ ] Actual MLX GPU execution and chosen batch/loading configuration recorded; completed-step throughput is
+      distinguished from full-run wall time, including evaluation/checkpoints and memory/swap observations
 - [ ] Checkpoint loads in `sft.py --base <name> --eval-only` without error
 
 ## Automated tests

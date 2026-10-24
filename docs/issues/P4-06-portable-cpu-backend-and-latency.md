@@ -32,6 +32,11 @@ pass of `model.py` is the boring, reliable path.
   on 100 items); config `kind = "torch"`.
 - `python -m warda bench-latency [--n 50] [--decider mlx|torch|tier1] [--state-tokens 1000]`: p50/p95 ms,
   RSS MB, machine description (CPU, RAM, OS) → appends a row to `docs/service/LATENCY.md` when `--record`.
+- On Apple Silicon compare explicit MLX CPU and GPU paths on the same checkpoint/state sample, including
+  cold load and warm p50/p95; record actual device, fallbacks, dtype, versions, concurrency, tokenisation time
+  and memory/swap. Use the faster correct path within the interactive latency/memory budget; do not claim
+  whole-request speedups from a resident kernel. PyTorch CPU remains the portable baseline, not a CUDA port.
+  Follow `docs/performance/APPLE_SILICON.md` and carry results back into P3-03 serving defaults.
 - `docs/service/LATENCY.md`: table from ≥ 4 machines including one 8 GB Apple silicon, one 16 GB x86 laptop
   (Linux or Windows WSL), one Windows native; budget from ADR-0005; recommendation per platform.
 
@@ -41,6 +46,8 @@ pass of `model.py` is the boring, reliable path.
       closing a gate issue with FAIL does not authorise progression. A failed gate requires a new approved PASS.
 
 - [ ] Parity test passes; `torch` backend serves the P3-03 DoD payloads on a Linux machine
+- [ ] `LATENCY.md` compares actual MLX CPU/GPU placement on the same Apple Silicon sample and reports
+      full-request p50/p95, cold load, memory and fallback reasons rather than only GPU kernel time
 - [ ] `LATENCY.md` has ≥ 4 rows; at least one 8 GB machine meets the ADR-0005 budget, or ADR-0005 is amended
       with the measured numbers and the reason
 - [ ] `uv sync --locked` succeeds on Linux (no MLX) and `pytest -q` passes there (MLX tests skipped by platform)

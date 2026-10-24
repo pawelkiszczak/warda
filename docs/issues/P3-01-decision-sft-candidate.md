@@ -23,6 +23,11 @@ per-type temperature (the current `sft.py` rule).
 
 ## Deliverables
 
+- Apply `docs/performance/APPLE_SILICON.md` to SFT and evaluation: explicitly verify MLX GPU work, reuse
+  measured bounded loading/batching and evaluate compilation only where the exact workload supports it.
+  Record completed-step throughput, full wall time, memory/swap, device/runtime/dtype and CPU fallback stages
+  in `SFT-candidate.md`. Preserve router precision, both-option-order averaging, calibration and frozen quality
+  gates; performance tuning uses development data only. CPU tiny smoke remains available on supported Macs.
 - Development runs must not automatically evaluate final test splits. Add an explicit development-only
   evaluation selection if needed in `sft.py`; final test/test_ood run only after candidate freeze. Recompute
   frozen trivial/tier-1 baselines on final sets for the gate-2 comparison (P1-11 reports development results).
@@ -48,6 +53,8 @@ per-type temperature (the current `sft.py` rule).
       `test` and `test_ood`; `test_ood` accuracy within 5 points of `test` (reads the policy, not memorises)
 - [ ] `warda.bench.run --decider sft:cand-v1` on `test.jsonl` reproduces `eval.json` accuracy within 0.5 pt
 - [ ] `SFT-candidate.md` complete; MLflow runs tracked
+- [ ] Apple GPU execution, batching/loading placement and completed throughput are recorded without relaxing
+      both-order averaging, calibration, candidate-selection protocol or final quality gates
 
 ## Automated tests
 

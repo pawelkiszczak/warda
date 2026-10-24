@@ -7,6 +7,23 @@ past 3.13), managed by uv from the repository root: `uv sync --locked` installs 
 `pyproject.toml` at the versions locked and tested together in `uv.lock`, and every command below runs through
 `uv run`. Data and runs live in `pretrain/work/` (gitignored).
 
+## Apple Silicon execution and acceleration
+
+Use the Apple GPU as much as it usefully accelerates the complete workload: MLX for training/inference and
+optional measured Metal kernels for preprocessing, combined with efficient CPU parsing, columnar filters,
+batching and bounded loading overlap. GPU utilisation is not a substitute for end-to-end speed or correctness.
+
+The current corpus builder is still CPU/native-library processing with multiprocessing; GPU text acceleration
+is planned in P1-12 and its adoption in P1-04. No Polars/ArrowMetal production dependency or preprocessing GPU
+flag is introduced by this policy. The [shared contract](../docs/performance/APPLE_SILICON.md) records local
+exploratory CPU/Metal results, unsupported/fallback cases and the benchmark/parity requirements for adoption.
+Training/SFT/serving tasks must record actual MLX CPU/GPU placement, completed timings, batch/dtype/runtime,
+memory headroom and loading bottlenecks. Preserve explicit CPU smokes on their supported platforms.
+
+MLX training needs a supported Apple Silicon Mac, local or rented; NVIDIA generation endpoints are separate
+from a CUDA training implementation. A CUDA trainer port, GGUF converter or Core ML backend requires separate
+scoping and compatibility checks, not a device flag or an assumed cloud fallback.
+
 ## Pretraining data
 
 `data/build_tokens.py` downloads resumable SpeakLeash JSONL.zst prefixes in parallel with HTTP Range and the selected Hugging

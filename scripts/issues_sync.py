@@ -3,8 +3,9 @@
     uv run python scripts/issues_sync.py lint
     uv run python scripts/issues_sync.py sync [--repo OWNER/NAME] [--dry-run] [--only P0-01,P0-02] [--no-project]
 
-The markdown files are the source of truth. `sync` creates missing labels and milestones, creates issues for files
-whose `github_issue` is 0 (writing the new number back into the file), then rewrites every issue's title, body,
+The markdown files are the source of truth. `sync` creates missing labels and milestones, updates stale label
+colours/descriptions, creates issues for files whose `github_issue` is 0 (writing the new number back into the file),
+then rewrites every issue's title, body,
 labels and milestone from its file so dependency links resolve to issue numbers. Finally it adds every issue to the
 project board, sets the Phase / Team / Hardware / Estimate fields from the file and puts cards without a status in
 Backlog. Every Status move after that is made by people (CONTRIBUTING.md says when a card may go to Ready).
@@ -62,21 +63,32 @@ LABELS: dict[str, tuple[str, str]] = {
     **{f"team:{t}": ("0e8a16", "Owning team") for t in TEAMS},
     **{f"type:{t}": ("1d76db", "") for t in TYPES},
     **{f"gate:{n}": ("b60205", f"Feeds gate {n}") for n in range(1, 5)},
-    "hardware:laptop": ("c2e0c6", "Any laptop, 8–16 GB, no GPU"),
-    "hardware:strong": ("fbca04", "Mac ≥ 64 GB or NVIDIA ≥ 24 GB (generation); Mac 96–128 GB or rented GPU (training)"),
-    "hardware:cloud": ("e99695", "Rented GPU (RunPod/Lambda/vast.ai) or free Kaggle/Colab hours"),
+    "hardware:laptop": ("c2e0c6", "Ordinary laptop; CPU tooling/smokes, optional supported Apple GPU acceleration"),
+    "hardware:strong": (
+        "fbca04",
+        "Strong compute; MLX training on Apple Silicon, NVIDIA for supported generation only",
+    ),
+    "hardware:cloud": (
+        "e99695",
+        "Approved remote compute; MLX needs Apple Silicon, CUDA training needs a separate port",
+    ),
 }
 
 HARDWARE_TEXT: dict[str, str] = {
-    "laptop": "Any laptop (8–16 GB RAM, no GPU). Everything in this task runs on CPU; no shared machine needed.",
+    "laptop": (
+        "Ordinary laptop (8–16 GB RAM); no discrete GPU or shared machine required. Keep portable CPU tooling/smokes; "
+        "use optional Apple GPU acceleration where supported and measured faster. MLX model smokes require a supported Mac."
+    ),
     "strong": (
-        "Strong machine for the full run (Mac ≥ 64 GB or NVIDIA ≥ 24 GB for generation; Mac 96–128 GB or a rented GPU "
-        "for training; see `docs/team/HARDWARE.md` and `scripts/queue.sh`). The CPU `--limit` smoke path still has to "
-        "work on a laptop and is part of the definition of done."
+        "Strong machine for the full run (Mac ≥ 64 GB or NVIDIA ≥ 24 GB for supported generation; MLX training needs "
+        "a sufficiently provisioned Apple Silicon Mac, typically 96–128 GB, local or rented). CUDA training requires "
+        "a separate approved port. See `docs/team/HARDWARE.md`, `scripts/queue.sh` and "
+        "`docs/performance/APPLE_SILICON.md`; retain CPU tooling smokes and Mac-only MLX smokes as applicable."
     ),
     "cloud": (
-        "Rented or free cloud GPU (ADR-0005). Budget approved by the coordinator before the run; the CPU smoke path "
-        "still has to work on a laptop."
+        "Approved rented/remote compute (ADR-0005). MLX requires a supported Apple Silicon Mac; NVIDIA generation "
+        "needs a configured compatible endpoint and CUDA training a separate approved port. Keep the applicable "
+        "CPU tooling or Mac-only MLX smoke; approve budget before the run."
     ),
 }
 
@@ -237,12 +249,18 @@ def gh(args: list[str], *, input: str | None = None) -> str:
 
 def ensure_labels(repo: str) -> None:
     existing = {
-        row["name"] for row in json.loads(gh(["label", "list", "--repo", repo, "--limit", "200", "--json", "name"]))
+        row["name"]: row
+        for row in json.loads(
+            gh(["label", "list", "--repo", repo, "--limit", "200", "--json", "name,color,description"])
+        )
     }
     for name, (color, description) in LABELS.items():
         if name not in existing:
             gh(["label", "create", name, "--repo", repo, "--color", color, "--description", description])
             print(f"label created {name}")
+        elif existing[name]["color"].lower() != color.lower() or (existing[name]["description"] or "") != description:
+            gh(["label", "edit", name, "--repo", repo, "--color", color, "--description", description])
+            print(f"label updated {name}")
 
 
 def ensure_milestones(repo: str) -> dict[str, int]:

@@ -22,6 +22,11 @@ them (training hardware → P2-01; label disputes → P0-05; platforms → P3-03
 
 ## Deliverables
 
+- Make `docs/performance/APPLE_SILICON.md` the acceleration contract in ADR-0003/0005: prefer verified MLX/Metal
+  GPU work wherever it improves end-to-end throughput/latency, keep native CPU for unsupported/slower stages,
+  and require actual backend/fallback reporting, completed-output timing, parity and unified-memory headroom.
+  P1-12 owns preprocessing adoption; training/serving tasks own MLX tuning. This does not claim those paths
+  have already shipped or permit quality/calibration regressions.
 - NVIDIA/cloud-GPU training is not executable with the current MLX trainer. Do not schedule it as a fallback
   without a separately estimated, approved training-port task and parity checks. CPU participation means
   non-ML tooling everywhere; MLX mini-training requires a supported Mac.

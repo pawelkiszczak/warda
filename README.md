@@ -20,6 +20,8 @@ Status: research and data stage. No trained Warda model yet.
   `train.py`), decision fine-tuning (`sft.py`, `sft/`), distillation (`distill/`), text-quality labelling tool
   (`quality/`). Details and results: `pretrain/README.md`.
 - `data/`: committed synthetic datasets (later phases).
+- `docs/performance/APPLE_SILICON.md`: Apple GPU/CPU acceleration policy, exploratory text benchmarks and
+  implementation/validation requirements; preprocessing delivery is tracked in P1-12.
 - `CONTRIBUTING.md`: how to work here — task board, branches, PRs and PR templates, keeping docs, issues and the
   board up to date.
 - `docs/`: plans, ADRs and gate records; `docs/issues/` is the task catalogue (one file per GitHub issue), synced
@@ -51,6 +53,17 @@ Without the fastText LID model, `uv run pytest -q` skips the LID tests and names
 
 Generated data, model weights and run artefacts go to `pretrain/work/` (gitignored). Never commit real personal data,
 work data or secrets: this repository is public.
+
+## Apple Silicon acceleration
+
+The project is Apple/MLX-first, not CUDA-first. Use supported Apple GPU execution wherever it improves complete
+pipeline throughput or request latency, together with native CPU processing and bounded data-loading overlap.
+Keep CPU tooling/smokes and portability; GPU utilisation alone is not a success metric.
+
+Preprocessing acceleration is planned in P1-12, not already installed: compare columnar CPU and explicit Metal
+paths, preserve text/dedup/tokenisation semantics, record actual placement/fallbacks and adopt measured wins.
+Training and serving tasks likewise require MLX GPU evidence and tuning. The current MLX trainer cannot use an
+NVIDIA GPU without a separate port. See [the policy and evidence](docs/performance/APPLE_SILICON.md).
 
 ## Development checks
 

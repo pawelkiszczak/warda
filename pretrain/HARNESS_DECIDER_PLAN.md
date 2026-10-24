@@ -127,8 +127,9 @@ Prawie wszystko darmowe i otwarte.
   danych ani sekretów), GitHub Projects jako tablica, dokumenty w Markdown w repo.
 - **Kod:** Python 3.12 z uv (zależności w `pyproject.toml`, zablokowane w `uv.lock`), Jupyter, pandas / DuckDB /
   pyarrow, pytest.
-- **Trening:** MLX (Mac), PyTorch (NVIDIA), biblioteki Hugging Face, MLflow (lokalny zapis treningów). Opcjonalnie
-  wynajem GPU (RunPod, Lambda, vast.ai).
+- **Trening:** obecny kod używa MLX na Apple Silicon; biblioteki Hugging Face i MLflow (lokalny zapis treningów).
+  Gdy brakuje pamięci, wynajem zgodnego Maca. Trening na NVIDIA wymaga osobnego portu i testów zgodności;
+  wynajem GPU CUDA sam w sobie nie wystarcza.
 - **Wnętrze modelu (pod przyszły pruning):** podgląd na żywo, które warstwy, głowice uwagi i eksperci najbardziej
   wpływają na decyzję.
   - nnsight, TransformerLens, pyvene: odczyt i podmiana aktywacji w trakcie działania modelu;
@@ -140,7 +141,12 @@ Prawie wszystko darmowe i otwarte.
 - **Dane ogólne:**
   - źródła: SpeakLeash, FineWeb-2, HPLT (PL), FineWeb-Edu (EN), kod na licencjach pozwalających na trening;
   - fastText (rozpoznawanie języka), `datasketch` (duplikaty);
-  - dysk na dziesiątki GB.
+  - dysk na dziesiątki GB;
+  - P1-12: pomiary CPU i Metal dla czyszczenia tekstu, filtrów, duplikatów i tokenizacji; P1-04 używa
+    wybranych ścieżek. Wykorzystujemy GPU Apple wszędzie, gdzie poprawia czas całego procesu przy tych samych
+    wynikach; wolniejsze lub nieobsługiwane etapy zostają na CPU. Raport podaje rzeczywisty backend, kopie,
+    pamięć i powody powrotu na CPU, nie samą dostępność GPU. Zasady i wyniki prób:
+    `docs/performance/APPLE_SILICON.md`.
 - **Dane decyzyjne:** lokalny serwer modeli (LM Studio, Ollama, llama.cpp), otwarte modele z Hugging Face, generator
   z repo (wznawialny, może chodzić całą noc).
 - **Labelowanie:** nasza aplikacja w przeglądarce; zapas: Label Studio lub Argilla; arkusz do szybkich przeglądów.
@@ -150,24 +156,27 @@ Prawie wszystko darmowe i otwarte.
   - Bielik-Guard, Llama Prompt Guard;
   - modele decyzyjne w stylu Jev;
   - proste reguły.
-- **Integracje:** lekki serwer HTTP (FastAPI / Starlette); formaty modelu MLX (Mac), GGUF (Linux / Windows),
-  opcjonalnie Core ML.
+- **Integracje:** lekki serwer HTTP (FastAPI / Starlette); MLX na Macu z pomiarem CPU/GPU i czasu całego żądania.
+  P4-06 dodaje zgodny backend PyTorch CPU dla Linux / Windows. GGUF i Core ML wymagają osobnej pracy nad
+  zgodnością tego modelu; nie są gotową ścieżką zastępczą.
 - **Sprzęt:**
   - labelowanie, research, benchmarki, integracje: dowolny laptop;
   - generowanie danych: Mac z ≥ 64 GB lub NVIDIA z ≥ 24 GB;
-  - trening od zera: Mac z 96–128 GB lub wynajęte GPU.
+  - trening od zera w MLX: Mac Apple Silicon z odpowiednią pamięcią, zwykle 96–128 GB, lokalny lub wynajęty.
 - **Słabszy sprzęt (zwykły laptop, 8–16 GB, bez GPU):** pełnoprawny udział.
   - Role bez wymagań sprzętowych: labelowanie, research, benchmarki, integracje, koordynacja, wytyczne.
   - Generowanie danych w małej skali: mniejsze, mocno skwantyzowane modele (np. 3–8B w GGUF przez llama.cpp lub
     Ollama) na CPU. Wolniej, ale generator jest wznawialny: paczka na noc, potem weryfikacja na mocniejszej maszynie.
   - Eksperymenty na małym modelu i wycinku danych, np. kilka tysięcy przykładów. Pomysł sprawdzony w małej skali
     puszczamy w dużej na mocnym sprzęcie.
-  - Darmowe GPU w chmurze z limitem godzin: Kaggle Notebooks, Google Colab. Do krótkich treningów i ocen.
+  - Darmowe GPU w chmurze z limitem godzin: Kaggle Notebooks, Google Colab, tylko dla zgodnych zadań
+    generowania i oceny. Obecny trening MLX nie działa tam bez Maca lub osobnego portu.
   - Zdalny dostęp do wspólnej mocnej maszyny (SSH / Tailscale), z kolejką zadań zamiast „kto pierwszy”.
   - **Testy szybkości na słabych laptopach są potrzebne:** strażnik ma działać u każdego, nie tylko na stacjach
     roboczych.
-- **Zasada:** każdy skrypt da się uruchomić na CPU z flagą „mała próbka”. Mocny sprzęt przyspiesza pracę, ale nie
-  jest warunkiem udziału.
+- **Zasada:** narzędzia mają ścieżkę CPU z flagą „mała próbka”; mały trening MLX wymaga zgodnego Maca.
+  Mocny sprzęt nie jest warunkiem udziału. Gdy GPU Apple przyspiesza zgodną pracę, używamy go wraz z szybkim
+  CPU i ograniczonym odczytem danych w tle; nie zwiększamy zajęcia GPU kosztem czasu, pamięci lub jakości.
 
 ## 7. Development agentowy
 

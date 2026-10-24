@@ -139,6 +139,34 @@ def test_sync_dry_run_makes_no_gh_calls(tmp_path: Path, monkeypatch: pytest.Monk
     assert path.read_text(encoding="utf-8") == before
 
 
+def test_ensure_labels_updates_stale_metadata_and_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
+    rows = {
+        name: {"name": name, "color": color.upper(), "description": description or None}
+        for name, (color, description) in issues_sync.LABELS.items()
+    }
+    rows["hardware:laptop"]["description"] = "Legacy CPU-only laptop description"
+    rows["hardware:strong"]["color"] = "000000"
+    mutations: list[list[str]] = []
+
+    def fake_gh(args: list[str], *, input: str | None = None) -> str:
+        if args[:2] == ["label", "list"]:
+            return json.dumps(list(rows.values()))
+        assert args[:2] == ["label", "edit"]
+        mutations.append(args)
+        rows[args[2]]["color"] = args[args.index("--color") + 1]
+        rows[args[2]]["description"] = args[args.index("--description") + 1]
+        return ""
+
+    monkeypatch.setattr(issues_sync, "gh", fake_gh)
+    issues_sync.ensure_labels("owner/repo")
+    assert [args[2] for args in mutations] == ["hardware:laptop", "hardware:strong"]
+    assert rows["hardware:laptop"]["description"] == issues_sync.LABELS["hardware:laptop"][1]
+    assert rows["hardware:strong"]["color"] == "fbca04"
+    mutations.clear()
+    issues_sync.ensure_labels("owner/repo")
+    assert mutations == []
+
+
 def test_sync_creates_then_edits_and_writes_number_back(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[list[str], str | None]] = []
 

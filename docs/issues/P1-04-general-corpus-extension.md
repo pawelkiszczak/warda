@@ -3,7 +3,7 @@ id = "P1-04"
 title = "General corpus extension: code sources, licence audit, dedup report"
 labels = ["phase:1", "team:data-general", "type:data"]
 milestone = "Phase 1 — Data and trials (weeks 2–6)"
-depends_on = ["P0-01", "P1-06"]
+depends_on = ["P0-01", "P1-06", "P1-12"]
 estimate_hours = 8
 hardware = "strong"
 github_issue = 14
@@ -31,6 +31,11 @@ licences are not recorded per source.
 - `docs/data/CORPUS.md`: table `Source | Language | Docs | Tokens | Licence | Filter | Notes` for every source in
   the manifest; dedup statistics (near-duplicate rate per source from `datasketch` MinHash as already used in the
   pipeline), language-ID confusion (pl/en/other), share of documents removed per filter stage.
+- Reuse P1-12's validated Apple Silicon stage placement for the rebuild: columnar metadata filtering before
+  Python rows, bounded MinHash/tokenizer batching and optional Metal only where full-pipeline measurements
+  justify it. Record actual CPU/Metal stages, versions, fallback reasons, documents/s, tokenisation tokens/s,
+  wall time and memory/swap in `CORPUS.md`; preserve Unicode cleanup, ordered dedup, splits and token framing.
+  Keep the CPU smoke and explicit CPU path; do not enable datasketch CUDA mode as a supposed Mac GPU path.
 - `pretrain/work/tokens/` rebuilt with the extended mix; token counts in `manifest.json`.
 
 ## Definition of done
@@ -40,6 +45,8 @@ licences are not recorded per source.
 - [ ] `docs/data/CORPUS.md` lists every source with a licence that allows training and redistribution of the
       *model* (recorded reasoning per source)
 - [ ] Code share of the final token mix is stated and ≤ 15 % (default; ADR-0005 can change it)
+- [ ] P1-12 adoption record is linked; the rebuild reports actual backend placement and end-to-end throughput,
+      with exact retained-ID/order and token-framing parity against the frozen CPU sample
 
 ## Automated tests
 
@@ -49,6 +56,7 @@ licences are not recorded per source.
 
 ## Documentation
 
+- `docs/performance/APPLE_SILICON.md` selected placement and reproduction evidence.
 - `docs/data/CORPUS.md` (new); `pretrain/README.md` "Pretraining data" gains the new sources and the `--sources` /
   `--limit-docs` flags.
 

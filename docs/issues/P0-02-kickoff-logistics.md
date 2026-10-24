@@ -28,7 +28,8 @@ cannot change and the team docs.
 
 - Assign a GitHub assignee before moving an issue to In progress; team labels are not ownership. Record hands-on
   effort separately from compute time, authoring/labelling person-hours and observation weeks. The catalogue
-  totals 271 estimated hours, including 122 tools hours; these are not the full project delivery duration.
+  includes the P1-12 acceleration task; derive current team/total estimates from the catalogue rather than a
+  frozen total. These are not the full project delivery duration.
   Re-estimate affected tasks after contract corrections and record capacity by named owner; do not invent owners.
 
 - `docs/team/OWNERS.md`: table `Team | Owner | Deputy | Contact` for the 8 teams + GDPR person + trainer deputy; a

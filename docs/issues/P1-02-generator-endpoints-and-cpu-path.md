@@ -31,6 +31,11 @@ omlx endpoints and model names (`endpoints()` at l.1128–1132) and the verifier
 - `--limit N` already exists; add `--dry-run` that renders prompts for N cases to stdout without calling any
   endpoint (for prompt review on any laptop).
 - `build --limit N` to build items from the first N accepted cases (for CPU tests of downstream tools).
+- Preserve/configure an Apple GPU model-server profile alongside the CPU profile: verify the server's actual
+  backend/offload, model and quantisation rather than inferring GPU use from its HTTP API. Measure bounded
+  concurrency/batching by accepted cases per second, verification throughput, retries and memory headroom;
+  choose the fastest stable settings without changing blind verification or data-quality rules. Document
+  unavailable/CPU-only endpoints honestly under `docs/performance/APPLE_SILICON.md`; no CUDA requirement.
 - Endpoint errors: retry 3× with backoff, then mark the case `status: "endpoint_error"` and continue (resumable
   behaviour preserved).
 
@@ -39,6 +44,8 @@ omlx endpoints and model names (`endpoints()` at l.1128–1132) and the verifier
 - [ ] `uv run python -m pretrain.harness.pii_gen generate --profile cpu --limit 5` completes on a laptop with
       Ollama running and appends 5 raw cases
 - [ ] `generate --dry-run --limit 3` prints 3 prompts with no network
+- [ ] A supported Apple GPU endpoint profile has backend/offload evidence and measured accepted-case throughput
+      with bounded concurrency and memory; unavailable hardware is recorded, not silently claimed as GPU
 - [ ] Default run is byte-for-byte the previous behaviour (same endpoints/models) — compare one `--dry-run` prompt
       before/after
 

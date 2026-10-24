@@ -30,6 +30,12 @@ The service runs the tier-1 decider only. `cand-v1` exists as `work/runs/<name>`
   `category` (7 options) and `action` (4 options), averages original/reversed orders, applies temperature by
   (type, language group), returns `Decision` with `confidence = max prob of action`; category also returned.
   Loads once in a background thread at startup; `/healthz` reports `decider.ready`; requests before ready → 503.
+- Prefer explicit MLX GPU execution on Apple Silicon under `docs/performance/APPLE_SILICON.md`; provide an
+  explicit CPU diagnostic path, report actual device/runtime/dtype and unsupported-operation fallbacks.
+  Benchmark cold load, warm completed model calls and request-level p50/p95 separately at representative state
+  sizes. Keep weights/readout resident; evaluate compilation and batching only if they improve real request
+  latency without changing both-order averaging, calibration or safety precedence. Bound concurrency and memory;
+  do not delay interactive decisions just to increase GPU batch utilisation.
 - Packaging: `scripts/export_model.py --run <name> --out models/cand-v1/` copying the files above plus
   `MODEL_CARD.md` (size, training data version, eval numbers, SHA-256s); `models/` is gitignored; the card is
   copied to `docs/model/CARD-cand-v1.md`.
@@ -50,6 +56,8 @@ The service runs the tier-1 decider only. `cand-v1` exists as `work/runs/<name>`
       (same action and |Δconfidence| < 1e-3); full service outputs are compared against the full pipeline,
       including deterministic precedence, bands and session state
 - [ ] p95 end-to-end latency for ≤ 1k-token states ≤ the ADR-0005 budget on the dev Mac (report p50/p95 and RAM)
+- [ ] Apple GPU execution and CPU diagnostic parity are verified; the report separates cold load, completed
+      model work, tokenizer/policy work and full request time, with backend/fallback evidence
 
 ## Automated tests
 
@@ -60,6 +68,11 @@ The service runs the tier-1 decider only. `cand-v1` exists as `work/runs/<name>`
 - `warda/service/tests/test_model_mlx.py` (`WARDA_SLOW`): load `tiny`-based export fixture (built in-test from
   the `tiny` config, random weights) → `decide` returns valid actions, both orders averaged (monkeypatch
   `predict` to record calls = 2 per question); 503 before ready.
+- Optional Apple-device parity test: load the same tiny export and frozen inputs through explicit MLX CPU and
+  GPU paths, materialise both outputs and verify actual placement, matching actions and |Δconfidence| < 1e-3.
+  Exercise the device-selection/reporting boundary so an ignored CPU selector or falsely reported GPU fails.
+  Missing Metal support is an explicit skip/unavailable result, never a passing GPU execution check; CPU-only
+  fake-backend tests cover that status without requiring Apple hardware.
 - `warda/service/tests/test_pipeline_order.py` (no MLX, fake decider): credential bypass; model redact without
   spans → reason text and `redacted_payload is None`.
 

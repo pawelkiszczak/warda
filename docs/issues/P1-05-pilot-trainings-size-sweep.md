@@ -24,6 +24,11 @@ configs exist, and no config runs on CPU for tests.
 
 ## Deliverables
 
+- Follow `docs/performance/APPLE_SILICON.md`: explicitly verify MLX GPU execution for non-smoke runs and
+  compare bounded batch sizes, compilation-compatible steps, existing bf16/fp32 precision and CPU/GPU loading
+  overlap. Record completed-step tokens/s, time spent loading/evaluating/checkpointing, first/warm latency,
+  device/version, thread budget and peak-memory/swap observations. Keep the fastest correct configuration
+  with headroom; do not equate GPU utilisation with throughput or change sweep quality criteria for speed.
 - `pretrain/configs/{tiny,xs,s,m}.json` loaded by `train.py --config PATH` (fields mirror `model.Config`);
   `--config` defaults to `s.json` to preserve current behaviour.
 - `train.py --tokens 1e5 --config pretrain/configs/tiny.json --name smoke` finishes on CPU-only MLX in < 2 min.
@@ -39,6 +44,8 @@ configs exist, and no config runs on CPU for tests.
 - [ ] Three sizes trained and scored; `SWEEP-1.md` filled; ADR-0001's rule applied → a chosen size recorded in
       the ADR as "interim"
 - [ ] `tiny` smoke documented and used by the new tests
+- [ ] `SWEEP-1.md` includes verified MLX GPU placement, completed-step throughput, loading/batch experiments
+      and selected memory-safe settings; slower/unsupported paths are reported rather than hidden
 - [ ] `warda.bench.run --decider sft:<run> --set …/dev.jsonl --limit 200` works and reports ECE/coverage
 
 ## Automated tests
@@ -51,7 +58,9 @@ configs exist, and no config runs on CPU for tests.
 
 ## Documentation
 
-- `docs/model/SWEEP-1.md`; `pretrain/README.md` "Model and pretraining" gains `--config` and the configs dir.
+- `docs/model/SWEEP-1.md` includes Apple GPU placement, tuning comparisons and chosen loading/batch settings;
+  `docs/performance/APPLE_SILICON.md` links the evidence.
+- `pretrain/README.md` "Model and pretraining" gains `--config` and the configs dir.
 
 ## Manual test (human, before the PR)
 
