@@ -3,65 +3,140 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Warda decision labelling</title>
+    <title>Warda · labelling</title>
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
-    <header>
-      <h1>Decision labelling</h1>
-      <span id="labeller"></span>
-      <span>Progress <b id="progress"></b></span>
-      <span>Item <b id="position"></b></span>
-      <span>Timer <b id="timer">0 s</b></span>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">W</span>
+        <span>Warda <b>labelling</b></span>
+        <span id="mode" class="mode"></span>
+      </div>
+      <div class="progress" title="Labelled by you">
+        <div class="bar"><i id="progress-bar"></i></div>
+        <span id="progress"></span>
+      </div>
+      <div class="meta-top">
+        <span id="labeller" class="pill"></span>
+        <span class="pill">Item <b id="position"></b></span>
+        <span class="pill timer" title="Seconds on this item"><b id="timer">0</b> s</span>
+        <button type="button" id="help-open" class="ghost" title="Keyboard shortcuts">?</button>
+      </div>
     </header>
-    <main>
-      <section class="item">
-        <h2>Policy</h2>
-        <pre id="policy" class="policy"></pre>
-        <h2>Call</h2>
-        <pre id="body"></pre>
-        <div id="question-box">
-          <h2>Question</h2>
-          <p id="question"></p>
-          <ol id="options" type="A"></ol>
+
+    <div class="shell">
+      <nav class="queue" aria-label="Items">
+        <div class="queue-head">
+          <span>Queue</span>
+          <button type="button" id="next-undone" class="ghost small" title="Next unlabelled (n)">next <kbd>n</kbd></button>
         </div>
-      </section>
-      <aside>
-        <div class="proposed">
-          <h2>Proposed gold</h2>
-          <p>Category <b id="proposed-category"></b></p>
-          <p>Action <b id="proposed-action"></b></p>
-          <p id="meta" class="muted"></p>
-        </div>
-        <div class="verdicts">
-          <button type="button" data-verdict="confirm"><kbd>c</kbd> Confirm</button>
-          <button type="button" data-verdict="fix"><kbd>f</kbd> Fix</button>
-          <button type="button" data-verdict="reject"><kbd>r</kbd> Reject</button>
-          <button type="button" data-verdict="unsure"><kbd>u</kbd> Unsure</button>
-        </div>
-        <fieldset id="fix" hidden>
-          <label>Category <select id="category"></select></label>
-          <label>Action <select id="action"></select></label>
-        </fieldset>
-        <label>Reason <textarea id="reason" rows="4"></textarea></label>
-        <div class="nav">
-          <button type="button" id="previous">← Previous</button>
-          <button type="button" id="save">Save <kbd>Enter</kbd></button>
-          <button type="button" id="next">Next →</button>
-          <button type="button" id="next-undone"><kbd>n</kbd> Next unlabelled</button>
-        </div>
-        <p id="status" role="status"></p>
-        <details>
-          <summary>Keyboard</summary>
-          <p>
-            <kbd>c</kbd> confirm, <kbd>f</kbd> fix (focuses category; Tab to action and reason), <kbd>r</kbd> reject,
-            <kbd>u</kbd> unsure, <kbd>Enter</kbd> save and go to the next unlabelled item (Shift+Enter: new line in
-            the reason), <kbd>Esc</kbd> leave a field, <kbd>←</kbd>/<kbd>→</kbd> previous/next, <kbd>n</kbd> next
-            unlabelled.
-          </p>
-        </details>
+        <ol id="queue"></ol>
+      </nav>
+
+      <main class="stage">
+        <section class="card" id="policy-card">
+          <header class="card-head">
+            <h2>Policy <span id="policy-name" class="muted"></span></h2>
+            <button type="button" id="policy-toggle" class="ghost small">collapse <kbd>p</kbd></button>
+          </header>
+          <div id="policy" class="policy"></div>
+        </section>
+
+        <section class="card">
+          <header class="card-head">
+            <h2>Outbound call</h2>
+            <span class="hint">select text, then <kbd>m</kbd> marks it protected</span>
+          </header>
+          <dl id="context" class="context"></dl>
+          <div id="facts" class="facts"></div>
+          <pre id="payload" class="payload"></pre>
+        </section>
+
+        <section class="card" id="question-card" hidden>
+          <header class="card-head"><h2>Question</h2></header>
+          <p id="question" class="question"></p>
+          <ol id="options" class="options" type="A"></ol>
+        </section>
+
+        <section class="card" id="twin-card" hidden>
+          <header class="card-head">
+            <h2>Contrast twin <span id="twin-title" class="muted"></span></h2>
+            <button type="button" id="twin-toggle" class="ghost small">hide <kbd>t</kbd></button>
+          </header>
+          <div id="twin-body">
+            <p id="twin-context" class="muted"></p>
+            <pre id="twin-diff" class="payload diff"></pre>
+          </div>
+        </section>
+
+        <section class="card" id="meta-card">
+          <dl id="meta" class="meta"></dl>
+        </section>
+      </main>
+
+      <aside class="panel">
+        <section id="proposed" class="proposed" hidden>
+          <h3>Proposed gold</h3>
+          <dl id="proposed-list" class="kv"></dl>
+          <p id="rationale" class="rationale"></p>
+        </section>
+
+        <section>
+          <h3>Action <span class="keys">1–4</span></h3>
+          <div id="actions" class="actions"></div>
+        </section>
+
+        <section>
+          <h3>Category <span class="keys">⇧1–⇧7</span></h3>
+          <div id="categories" class="chips"></div>
+        </section>
+
+        <section id="clause-section" hidden>
+          <h3>Clause <span class="keys">[ ]</span></h3>
+          <div id="clauses" class="chips"></div>
+        </section>
+
+        <section>
+          <h3>Protected spans <span class="keys">m · ⇧m undo</span></h3>
+          <ul id="spans" class="spans"></ul>
+          <p id="spans-warning" class="warning" hidden>Redact without protected spans: mark what must be removed.</p>
+        </section>
+
+        <section>
+          <h3>Reason <span class="keys">/</span></h3>
+          <textarea id="reason" rows="3" placeholder="Why — cite the clause and the facts"></textarea>
+        </section>
+
+        <section class="verdict-row">
+          <div id="verdicts" class="verdicts"></div>
+          <button type="button" id="save" class="primary">Save <kbd>Enter</kbd></button>
+        </section>
+        <p id="status" role="status" aria-live="polite"></p>
       </aside>
-    </main>
+    </div>
+
+    <dialog id="help">
+      <h2>Keyboard</h2>
+      <table>
+        <tbody>
+          <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>action: allow, redact, ask_user, block</td></tr>
+          <tr><td><kbd>⇧1</kbd>–<kbd>⇧7</kbd></td><td>category, in the order shown</td></tr>
+          <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>previous / next policy clause (or click a clause in the policy)</td></tr>
+          <tr><td><kbd>m</kbd> / <kbd>⇧m</kbd></td><td>mark the selected payload text protected / drop the last span</td></tr>
+          <tr><td><kbd>Space</kbd></td><td>review mode: confirm the proposed gold and save</td></tr>
+          <tr><td><kbd>c</kbd> <kbd>f</kbd> <kbd>r</kbd> <kbd>u</kbd></td><td>confirm (reset to proposed), fix, reject, unsure</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>save and open the next unlabelled item (<kbd>⇧Enter</kbd>: new line)</td></tr>
+          <tr><td><kbd>/</kbd> · <kbd>Esc</kbd></td><td>write a reason · leave the field / close this help</td></tr>
+          <tr><td><kbd>j</kbd> <kbd>k</kbd> · <kbd>→</kbd> <kbd>←</kbd></td><td>next / previous item</td></tr>
+          <tr><td><kbd>n</kbd></td><td>next unlabelled item</td></tr>
+          <tr><td><kbd>p</kbd> · <kbd>t</kbd></td><td>collapse the policy · hide the contrast twin</td></tr>
+          <tr><td><kbd>?</kbd></td><td>this help</td></tr>
+        </tbody>
+      </table>
+      <form method="dialog"><button type="submit" class="primary">Close</button></form>
+    </dialog>
+
     <script src="/static/app.js"></script>
   </body>
 </html>

@@ -35,6 +35,7 @@ uv run python -m pretrain.harness.pii_gen generate --hours 7.5 --workers 16
 uv run python -m pretrain.harness.pii_gen build
 uv run python -m pretrain.quality.app --items pretrain/work/quality/items.jsonl --labeller <name> --port 8765
 uv run python -m warda.label.app --items pretrain/work/harness_pii/items/dev.jsonl --db /tmp/a.sqlite --labeller <name>
+uv run python -m warda.label.app --items data/brama/examples-v0.jsonl --db /tmp/b.sqlite --labeller <name> --blind --port 8767
 uv run python -m warda.label.export --db /tmp/a.sqlite --db /tmp/b.sqlite --out /tmp/agree   # agreement report
 uv run mlflow ui --backend-store-uri sqlite:///pretrain/work/mlflow.db --port 5000
 uv run python scripts/issues_sync.py lint          # also covered by pytest
@@ -194,7 +195,7 @@ Key contracts:
   `requires_lid` tests run and fail instead; `testpaths = ["pretrain", "scripts", "warda"]`, `pythonpath = ["."]`.
 - Tests live in `<package>/tests/test_*.py`: plain `test_*` functions with `assert`, `pytest.mark.parametrize`,
   `tmp_path`, `monkeypatch`, local fakes (e.g. fake `gh` calls). No test classes.
-- Covered: `warda/schema` and the collection gates, `warda/label` (agreement metrics, app, export),
+- Covered: `warda/schema` and the collection gates, `warda/label` (agreement metrics, item formats, app, export),
   `harness/pii_gen`, `quality/{textstats,app,fetch_lid}`, `sft` Englishization, `scripts/issues_sync`. Not covered:
   `model`, `train`, `sft.py`, `prompt`, `track`, `data/`, `distill/` — verify those with a real smoke run.
 - Mark tests that call the real LID model `@pytest.mark.requires_lid`. PR templates mention slow tests via
