@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Warda decision labelling</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Decision labelling</h1>
+      <span id="labeller"></span>
+      <span>Progress <b id="progress"></b></span>
+      <span>Item <b id="position"></b></span>
+      <span>Timer <b id="timer">0 s</b></span>
+    </header>
+    <main>
+      <section class="item">
+        <h2>Policy</h2>
+        <pre id="policy" class="policy"></pre>
+        <h2>Call</h2>
+        <pre id="body"></pre>
+        <div id="question-box">
+          <h2>Question</h2>
+          <p id="question"></p>
+          <ol id="options" type="A"></ol>
+        </div>
+      </section>
+      <aside>
+        <div class="proposed">
+          <h2>Proposed gold</h2>
+          <p>Category <b id="proposed-category"></b></p>
+          <p>Action <b id="proposed-action"></b></p>
+          <p id="meta" class="muted"></p>
+        </div>
+        <div class="verdicts">
+          <button type="button" data-verdict="confirm"><kbd>c</kbd> Confirm</button>
+          <button type="button" data-verdict="fix"><kbd>f</kbd> Fix</button>
+          <button type="button" data-verdict="reject"><kbd>r</kbd> Reject</button>
+          <button type="button" data-verdict="unsure"><kbd>u</kbd> Unsure</button>
+        </div>
+        <fieldset id="fix" hidden>
+          <label>Category <select id="category"></select></label>
+          <label>Action <select id="action"></select></label>
+        </fieldset>
+        <label>Reason <textarea id="reason" rows="4"></textarea></label>
+        <div class="nav">
+          <button type="button" id="previous">← Previous</button>
+          <button type="button" id="save">Save <kbd>Enter</kbd></button>
+          <button type="button" id="next">Next →</button>
+          <button type="button" id="next-undone"><kbd>n</kbd> Next unlabelled</button>
+        </div>
+        <p id="status" role="status"></p>
+        <details>
+          <summary>Keyboard</summary>
+          <p>
+            <kbd>c</kbd> confirm, <kbd>f</kbd> fix (focuses category; Tab to action and reason), <kbd>r</kbd> reject,
+            <kbd>u</kbd> unsure, <kbd>Enter</kbd> save and go to the next unlabelled item (Shift+Enter: new line in
+            the reason), <kbd>Esc</kbd> leave a field, <kbd>←</kbd>/<kbd>→</kbd> previous/next, <kbd>n</kbd> next
+            unlabelled.
+          </p>
+        </details>
+      </aside>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

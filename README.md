@@ -11,8 +11,9 @@ Status: research and data stage. No trained Warda model yet.
 
 - [`AGENTS.md`](AGENTS.md): the repository contract for agents and humans — run commands, layout, data formats,
   rules, hardware (`CLAUDE.md` links to it).
-- `warda/`: product code — shared vocabulary and records (`schema.py`); `guard`, `service`, `hooks`, `bench`,
-  `label` and the CLI arrive in later phases.
+- `warda/`: product code — shared vocabulary and records (`schema.py`), the decision labelling app with two-labeller
+  agreement (`label/`, guide: `docs/labelling/APP.md`); `guard`, `service`, `hooks`, `bench` and the CLI arrive in
+  later phases.
 - `pretrain/HARNESS_DECIDER_PLAN.md`: team plan (Polish): goals, gates, teams and sign-up table, schedule, tools.
 - `FINDINGS.md`: results and decisions so far, with links to the detailed documents.
 - `pretrain/harness/`: synthetic PII / disclosure dataset generator (`pii_gen.py`) and its tests.
