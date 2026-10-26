@@ -82,6 +82,7 @@ ignore = ["E501", "PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR091
 "pretrain/quality/tests/test_textstats.py" = ["RUF001"] # Mixed-script test fixture intentionally contains a Cyrillic lookalike.
 "pretrain/quality/textstats.py" = ["RUF001"] # Linguistic feature fixtures preserve real Unicode punctuation.
 "scripts/issues_sync.py" = ["T201", "S603", "S607", "RUF001"] # CLI output; subprocess runs the gh binary from PATH by design; milestone titles use en dashes verbatim.
+"warda/label/export.py" = ["T201"] # Export summary (counts, kappa, alpha) is intentionally printed.
 
 [tool.mypy]
 python_version = "3.12"

@@ -81,7 +81,7 @@ repos:
     rev: v2.5.15
     hooks:
       - id: biome-check
-        files: ^pretrain/quality/static/.*\.(js|css|html)$
+        files: ^(pretrain/quality|warda/label)/static/.*\.(js|css|html)$
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.23.3

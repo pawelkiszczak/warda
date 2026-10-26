@@ -34,6 +34,9 @@ uv run python pretrain/sft.py --base s126m-1b --name s126m-1b-sft --epochs 6
 uv run python -m pretrain.harness.pii_gen generate --hours 7.5 --workers 16
 uv run python -m pretrain.harness.pii_gen build
 uv run python -m pretrain.quality.app --items pretrain/work/quality/items.jsonl --labeller <name> --port 8765
+uv run python -m warda.label.app --items pretrain/work/harness_pii/items/dev.jsonl --db /tmp/a.sqlite --labeller <name>
+uv run python -m warda.label.app --items data/brama/examples-v0.jsonl --db /tmp/b.sqlite --labeller <name> --blind --port 8767
+uv run python -m warda.label.export --db /tmp/a.sqlite --db /tmp/b.sqlite --out /tmp/agree   # agreement report
 uv run mlflow ui --backend-store-uri sqlite:///pretrain/work/mlflow.db --port 5000
 uv run python scripts/issues_sync.py lint          # also covered by pytest
 uv run python scripts/issues_sync.py sync --dry-run
@@ -48,8 +51,9 @@ Dependencies: edit `pyproject.toml` or use `uv add` / `uv remove`; commit `uv.lo
   `cli.py` (CLI entry point, P2-06). Later phases fill the subpackages.
 - `pretrain/` — research: scratch-model experiments and dataset tooling (table below).
 - `data/` — committed synthetic datasets (later phases).
-- `docs/` — plans, ADRs, gate records, the task catalogue (`docs/issues/`) and the Apple Silicon acceleration
-  contract (`docs/performance/APPLE_SILICON.md`: backend placement, parity and end-to-end measurement rules).
+- `docs/` — plans, ADRs, gate records, the task catalogue (`docs/issues/`), the labelling app guide
+  (`docs/labelling/APP.md`) and the Apple Silicon acceleration contract (`docs/performance/APPLE_SILICON.md`: backend
+  placement, parity and end-to-end measurement rules).
 - `pretrain/work/` — **gitignored** artefacts: tokens, runs, SFT splits, pools, caches, models, `mlflow.db`.
 
 | Path | Purpose |
@@ -150,11 +154,12 @@ Key contracts:
 - **Lazy heavy imports**: import MLX/fastText inside functions (`PLC0415` ignored) so non-ML commands stay importable.
 - **Dependency injection**: light; e.g. `create_app(items_path, db_path, labeller)` closes over data/DB; `sft.py` injects
   a small `Pointer` readout. Otherwise module constants, no global framework.
-- **Async**: only in the Starlette quality app (async route handlers). Treat request data as untrusted (CodeQL scans it).
+- **Async**: only in the Starlette apps (`pretrain/quality/app.py`, `warda/label/app.py`; async route handlers). Treat
+  request data as untrusted (CodeQL scans it).
 - **Language**: Polish is central to data, prompts and heuristics; don't assume non-Polish input is Polish. Keep each
   doc's existing language (`pretrain/HARNESS_DECIDER_PLAN.md` is Polish; the rest is English). Add new Polish words
   that trip codespell to `[tool.codespell] ignore-words-list`.
-- **Frontend**: `pretrain/quality/static/` — Biome recommended rules, 2-space indent, 120 cols.
+- **Frontend**: `pretrain/quality/static/`, `warda/label/static/` — Biome recommended rules, 2-space indent, 120 cols.
 - **Markdown**: markdownlint, MD013 at 120 cols (tables/code exempt), MD060 disabled.
 
 ## Important Files
@@ -190,9 +195,9 @@ Key contracts:
   `requires_lid` tests run and fail instead; `testpaths = ["pretrain", "scripts", "warda"]`, `pythonpath = ["."]`.
 - Tests live in `<package>/tests/test_*.py`: plain `test_*` functions with `assert`, `pytest.mark.parametrize`,
   `tmp_path`, `monkeypatch`, local fakes (e.g. fake `gh` calls). No test classes.
-- Covered: `warda/schema` and the collection gates, `harness/pii_gen`, `quality/{textstats,app,fetch_lid}`, `sft`
-  Englishization, `scripts/issues_sync`. Not covered: `model`, `train`, `sft.py`, `prompt`, `track`, `data/`,
-  `distill/` — verify those with a real smoke run.
+- Covered: `warda/schema` and the collection gates, `warda/label` (agreement metrics, item formats, app, export),
+  `harness/pii_gen`, `quality/{textstats,app,fetch_lid}`, `sft` Englishization, `scripts/issues_sync`. Not covered:
+  `model`, `train`, `sft.py`, `prompt`, `track`, `data/`, `distill/` — verify those with a real smoke run.
 - Mark tests that call the real LID model `@pytest.mark.requires_lid`. PR templates mention slow tests via
   `WARDA_SLOW=1`.
 - No coverage tooling or threshold; expectation is tests for new behavior plus the manual test in the PR.

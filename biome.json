@@ -13,6 +13,13 @@
     }
   },
   "files": {
-    "includes": ["pretrain/quality/static/**/*.js", "pretrain/quality/static/**/*.css", "pretrain/quality/static/**/*.html"]
+    "includes": [
+      "pretrain/quality/static/**/*.js",
+      "pretrain/quality/static/**/*.css",
+      "pretrain/quality/static/**/*.html",
+      "warda/label/static/**/*.js",
+      "warda/label/static/**/*.css",
+      "warda/label/static/**/*.html"
+    ]
   }
 }
