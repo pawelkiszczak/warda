@@ -1,0 +1,22 @@
+{
+  "endpoint": "http://127.0.0.1:8001/v1/systemone",
+  "served": {
+    "data": [
+      {
+        "id": "SurdAI/SPX-CD-Omni"
+      }
+    ]
+  },
+  "revision": "06a786a13f2ce9b8d1b8f541cf030fae007008fb",
+  "name": "SPX-CD-Omni",
+  "decider": "systemone",
+  "model": "SurdAI/SPX-CD-Omni",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 209.4,
+  "date": "2026-10-25",
+  "server": "warda.bench.systemone_shim --backend spx --base google/gemma-4-12B-it@707f0a3b8a3c7ad586ed01e27eafbad8a27dd0f7 (LLM.int8)",
+  "server_env": "spx"
+}

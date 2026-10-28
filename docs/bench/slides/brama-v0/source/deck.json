@@ -1,0 +1,19 @@
+{
+  "v": 4,
+  "createdOnFiles": {"v": 1, "at": "2026-10-25T16:20:00Z"},
+  "lists": "css",
+  "title": "Brama — egzamin dla strażnika danych",
+  "order": ["cover", "problem", "guard", "flow", "where", "pipeline", "input", "policy", "task", "twins", "trap", "tracks", "scoring", "floors", "results", "limits"],
+  "sections": {
+    "s1": {"description": "Problem: asystent AI wysyła tekst w świat, a Warda ma stać przy bramie", "start": "cover"},
+    "s2": {"description": "Cały proces od prośby użytkownika do decyzji i miejsce Bramy w nim", "start": "flow"},
+    "s3": {"description": "Co model decyzyjny dostaje na wejście i co musi z tym zrobić", "start": "input"},
+    "s4": {"description": "Jak Brama sprawdza modele: bliźniaki, pułapki, dziewięć rodzajów zadań, miary", "start": "twins"},
+    "s5": {"description": "Pierwsze wyniki i czego jeszcze nie wiemy", "start": "floors"}
+  },
+  "faces": {
+    "space-grotesk": {"family": "Space Grotesk", "href": "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap"},
+    "ibm-plex-sans": {"family": "IBM Plex Sans", "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap"},
+    "jetbrains-mono": {"family": "JetBrains Mono", "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"}
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "device": "cuda",
+  "dtype": "int8 (bitsandbytes)",
+  "revision": "a74fa8560324b6b1502d01bf6440e2b0affcfa4f",
+  "name": "Bielik-PL-11B-v3.0-Instruct",
+  "decider": "hf",
+  "model": "speakleash/Bielik-PL-11B-v3.0-Instruct",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 204.3,
+  "date": "2026-10-25"
+}

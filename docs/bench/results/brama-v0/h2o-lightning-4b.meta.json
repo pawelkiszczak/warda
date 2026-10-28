@@ -1,0 +1,23 @@
+{
+  "endpoint": "http://127.0.0.1:8741/v1/systemone",
+  "served": {
+    "object": "list",
+    "data": [
+      {
+        "id": "h2oai/h2o-lightning-4b",
+        "readout": "native label log-probabilities over vLLM"
+      }
+    ]
+  },
+  "revision": "d42875078bafb155af14d609d85071091418e83f",
+  "name": "h2o-lightning-4b",
+  "decider": "systemone",
+  "model": "h2oai/h2o-lightning-4b",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 44.5,
+  "date": "2026-10-25",
+  "server": "serve.sh, two-way, MAX_LEN=16384 (vLLM 0.30.0 + h2oai/vllm @6bc6d5a)"
+}

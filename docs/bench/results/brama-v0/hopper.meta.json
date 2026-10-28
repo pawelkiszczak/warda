@@ -1,0 +1,15 @@
+{
+  "endpoint": "http://127.0.0.1:8080/v1/systemone",
+  "served": null,
+  "revision": "fa02effb1cfef5b3c22096c6eef0f9670a56bf04",
+  "name": "hopper",
+  "decider": "systemone",
+  "model": "HopitAI/hopper",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 51.8,
+  "date": "2026-10-25",
+  "server": "hopper-serve 1.1.1 (v1.1.1, a3cca71), adapter fa02eff, --allow-slow-kernels"
+}

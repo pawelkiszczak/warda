@@ -1,0 +1,22 @@
+{
+  "endpoint": "http://127.0.0.1:8001/v1/systemone",
+  "served": {
+    "data": [
+      {
+        "id": "perplexity-ai/pplx-decider-flash-v1.2"
+      }
+    ]
+  },
+  "revision": "9ff7cf9838e59df461c276b7699d56b244d2af58",
+  "name": "pplx-decider-flash-v1.2",
+  "decider": "systemone",
+  "model": "perplexity-ai/pplx-decider-flash-v1.2",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 236.5,
+  "date": "2026-10-25",
+  "server": "warda.bench.systemone_shim --backend pplx",
+  "server_env": "pplx"
+}

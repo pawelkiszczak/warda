@@ -1,0 +1,22 @@
+{
+  "endpoint": "http://127.0.0.1:8001/v1/systemone",
+  "served": {
+    "data": [
+      {
+        "id": "akhilaaa3/Jev-Omni"
+      }
+    ]
+  },
+  "revision": "fee89b076e2263bfa8bce8d34142caa4ca733a48",
+  "name": "Jev-Omni",
+  "decider": "systemone",
+  "model": "akhilaaa3/Jev-Omni",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 159.7,
+  "date": "2026-10-25",
+  "server": "warda.bench.systemone_shim --backend jev (backbone LLM.int8, transformers 5.17.0 as its requirements.txt)",
+  "server_env": "jev"
+}

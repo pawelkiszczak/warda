@@ -37,6 +37,13 @@ uv run python -m pretrain.quality.app --items pretrain/work/quality/items.jsonl 
 uv run mlflow ui --backend-store-uri sqlite:///pretrain/work/mlflow.db --port 5000
 uv run python scripts/issues_sync.py lint          # also covered by pytest
 uv run python scripts/issues_sync.py sync --dry-run
+uv run python -m warda.bench.run_brama run --decider tier1        # Brama v0 pilot; --limit N for a smoke run
+uv run --with torch python -m warda.bench.run_brama run --decider hf --model <hf-id>
+uv run --with "gliner2[local]" python -m warda.bench.run_brama run --decider gliner2 --model <hf-id>
+uv run python -m warda.bench.run_brama run --decider systemone --endpoint http://127.0.0.1:8001 --model <hf-id>
+                                                                 # any POST /v1/systemone server; models with only a
+                                                                 # Python API: warda.bench.systemone_shim (own env)
+uv run python -m warda.bench.run_brama report                     # scores every run in docs/bench/results/brama-v0/
 ```
 
 Dependencies: edit `pyproject.toml` or use `uv add` / `uv remove`; commit `uv.lock` (pre-commit runs `uv-lock --check`).
@@ -47,7 +54,8 @@ Dependencies: edit `pyproject.toml` or use `uv add` / `uv remove`; commit `uv.lo
   integrations), `bench/` (evaluation harness), `label/` (labelling app), `schema.py` (shared literals and records),
   `cli.py` (CLI entry point, P2-06). Later phases fill the subpackages.
 - `pretrain/` — research: scratch-model experiments and dataset tooling (table below).
-- `data/` — committed synthetic datasets (later phases).
+- `data/` — committed synthetic datasets: `data/brama/` holds the Brama v0 examples, ids sidecar, example policies
+  and card; `warda/bench/brama.py` validates and scores them (design: `docs/bench/BRAMA.md`).
 - `docs/` — plans, ADRs, gate records, the task catalogue (`docs/issues/`) and the Apple Silicon acceleration
   contract (`docs/performance/APPLE_SILICON.md`: backend placement, parity and end-to-end measurement rules).
 - `pretrain/work/` — **gitignored** artefacts: tokens, runs, SFT splits, pools, caches, models, `mlflow.db`.
@@ -71,6 +79,14 @@ Dependencies: edit `pyproject.toml` or use `uv add` / `uv remove`; commit `uv.lo
 `source`, `license`; harness items add `question_id`, `category`, `policy`, `destination`, `action`; `target` and
 other metadata are optional. The closed vocabularies behind the fields (actions, categories, destination classes,
 destinations, channels) live in `warda/schema.py`.
+
+**Brama item JSONL** (`data/brama/examples-v0.jsonl`) — one outbound call per line, in contrast groups: `id`, `group`,
+`role`, `twin_of`, `track`, `scenario`, `use_case`, `language`, then the decider-visible fields `policy`, `channel`,
+`destination`, `task`, `provenance`, `facts`, `payload`, then gold `gold_action`, `acceptable`, `gold_category`,
+`tier`, `clause`, `protected`, `rationale`, `labels`, `adjudication`, `author`, `source`, `canary`. Checksummed
+values are `{kind:key}` placeholders resolved from `examples-v0.ids.json`; only `brama.DECIDER_FIELDS` may reach a
+decider (R-12, tested). Policies are Markdown with TOML front matter (`+++`) holding id, clauses and the default
+table.
 
 ## Rules
 
@@ -190,9 +206,9 @@ Key contracts:
   `requires_lid` tests run and fail instead; `testpaths = ["pretrain", "scripts", "warda"]`, `pythonpath = ["."]`.
 - Tests live in `<package>/tests/test_*.py`: plain `test_*` functions with `assert`, `pytest.mark.parametrize`,
   `tmp_path`, `monkeypatch`, local fakes (e.g. fake `gh` calls). No test classes.
-- Covered: `warda/schema` and the collection gates, `harness/pii_gen`, `quality/{textstats,app,fetch_lid}`, `sft`
-  Englishization, `scripts/issues_sync`. Not covered: `model`, `train`, `sft.py`, `prompt`, `track`, `data/`,
-  `distill/` — verify those with a real smoke run.
+- Covered: `warda/schema` and the collection gates, `warda/bench` (Brama examples, validator, metrics),
+  `harness/pii_gen`, `quality/{textstats,app,fetch_lid}`, `sft` Englishization, `scripts/issues_sync`. Not
+  covered: `model`, `train`, `sft.py`, `prompt`, `track`, `data/`, `distill/` — verify those with a real smoke run.
 - Mark tests that call the real LID model `@pytest.mark.requires_lid`. PR templates mention slow tests via
   `WARDA_SLOW=1`.
 - No coverage tooling or threshold; expectation is tests for new behavior plus the manual test in the PR.

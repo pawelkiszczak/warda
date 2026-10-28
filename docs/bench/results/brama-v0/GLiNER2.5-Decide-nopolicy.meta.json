@@ -1,0 +1,14 @@
+{
+  "device": "cuda",
+  "revision": "9d1bfb848cd16d93ee56ccbc59cd92bf0f284d90",
+  "input": "state_without_policy",
+  "name": "GLiNER2.5-Decide-nopolicy",
+  "decider": "gliner2",
+  "model": "fastino/GLiNER2.5-Decide",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 13.6,
+  "date": "2026-10-25"
+}

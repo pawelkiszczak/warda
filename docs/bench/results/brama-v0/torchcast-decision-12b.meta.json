@@ -1,0 +1,23 @@
+{
+  "endpoint": "http://127.0.0.1:8011/v1/systemone",
+  "served": {
+    "models": [
+      {
+        "id": "torchcast-decision-12b",
+        "readout": "native option-logit over vLLM"
+      }
+    ]
+  },
+  "revision": "49107b5589bf2dc4ec3f5acd54316971dd5978b1",
+  "question_key": "decision",
+  "name": "torchcast-decision-12b",
+  "decider": "systemone",
+  "model": "torchcast-ai/torchcast-decision-12b",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 28.8,
+  "date": "2026-10-25",
+  "server": "vllm 0.30.0 serve --quantization fp8 --max-model-len 16384 + torchcast serving/torchcast_shim.py (v1.0.0, d7f8446) (FP8 weights on sm86 via MarlinFP8ScaledMMLinearKernel, W8A16: the other FP8 kernels disabled with VLLM_DISABLED_KERNELS)"
+}

@@ -1,0 +1,33 @@
+{
+  "endpoint": "http://127.0.0.1:8000/v1/systemone",
+  "served": {
+    "models": [
+      {
+        "name": "basal-2.0-max-folder",
+        "release_date": "2026-10-22",
+        "description": "basal typed-decision model (choice / noul / score / act / multi / tool), Polish and English",
+        "mode": "gguf",
+        "early_exit": [],
+        "temperature_per_prim": {
+          "choice": 1.3542555469368927,
+          "noul": 2.4130090616010436,
+          "score": 2.3107053937445454
+        },
+        "prompt_format": 2,
+        "orders": 1
+      }
+    ]
+  },
+  "revision": "2fffc5cc41e5cf7a2f752f38f17e7b4d9a4a8252",
+  "name": "basal-2.0-max",
+  "decider": "systemone",
+  "model": "Remek/basal-2.0-max",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 104.2,
+  "date": "2026-10-25",
+  "server": "basal-serve 2.4.1 --mode gguf --model <Remek/basal-2.0-max-GGUF folder + chat_template.jinja of Remek/basal-2.0-max> --gguf basal-2.0-max-Q8_0.gguf (author's file; calibration CALIBRATION.json, the bf16 fit, as the card says for --mode gguf)",
+  "gguf_revision": "Remek/basal-2.0-max-GGUF@8af9c1e127f0247cbdc326be04c2feeb273b8e26"
+}

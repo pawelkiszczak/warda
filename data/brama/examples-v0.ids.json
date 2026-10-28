@@ -1,0 +1,30 @@
+{
+  "seed": 2026,
+  "note": "All values are fictional.",
+  "values": {
+    "{email:halina.wrobel}": "halina.wrobel@o2.pl",
+    "{email:j.nowicka}": "j.nowicka@interia.pl",
+    "{email:jutta.brenner}": "jutta.brenner@onet.pl",
+    "{email:k.lis}": "k.lis@poczta.fm",
+    "{email:kasia.zielinska}": "kasia.zielinska@interia.pl",
+    "{email:zofia.lis}": "zofia.lis@gmail.com",
+    "{email_en:callum.brierley}": "callum.brierley@yahoo.co.uk",
+    "{email_en:grace.whitfield}": "grace.whitfield@yahoo.co.uk",
+    "{email_en:harriet.ashdown}": "harriet.ashdown@outlook.com",
+    "{email_en:imogen.thackeray}": "imogen.thackeray@icloud.com",
+    "{email_en:noah.pemberton}": "noah.pemberton@gmail.com",
+    "{email_en:oliver.hughes}": "oliver.hughes@proton.me",
+    "{email_en:rhys.calloway}": "rhys.calloway@icloud.com",
+    "{email_obf:rhys.calloway}": "rhys.calloway [at] icloud [dot] com",
+    "{iban:em}": "PL33 2538 4977 9358 2361 8979 6211",
+    "{pesel:bn}": "01250660060",
+    "{pesel:jm}": "04300483736",
+    "{pesel:wk}": "92011870125",
+    "{pesel:zl}": "80052116988",
+    "{pesel_invalid:order}": "62743675450",
+    "{pesel_spaced:jm}": "04 30 04 837 36",
+    "{phone:hw}": "+48 556 854 157",
+    "{phone:zl}": "+48 501 378 130",
+    "{phone_uk:oh}": "+44 7888 612709"
+  }
+}

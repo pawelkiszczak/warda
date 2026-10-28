@@ -1,0 +1,68 @@
+{
+  "endpoint": "http://127.0.0.1:8091/v1/systemone",
+  "served": {
+    "models": [
+      {
+        "name": "Winnow-12B",
+        "model": "Winnow-12B",
+        "modified_at": "",
+        "size": "",
+        "digest": "",
+        "type": "model",
+        "description": "",
+        "tags": [
+          ""
+        ],
+        "capabilities": [
+          "completion"
+        ],
+        "parameters": "",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "",
+          "families": [
+            ""
+          ],
+          "parameter_size": "",
+          "quantization_level": ""
+        }
+      }
+    ],
+    "object": "list",
+    "data": [
+      {
+        "id": "Winnow-12B",
+        "aliases": [
+          "Winnow-12B"
+        ],
+        "tags": [],
+        "object": "model",
+        "created": 1792940090,
+        "owned_by": "llamacpp",
+        "meta": {
+          "vocab_type": true,
+          "n_vocab": 262144,
+          "n_ctx": 8192,
+          "n_ctx_train": 262144,
+          "n_embd": 3840,
+          "n_params": 11907350576,
+          "size": 12653822144,
+          "ftype": "Q8_0"
+        }
+      }
+    ]
+  },
+  "revision": "0b5b7f98e718cf0faffd0acea3093b86ebf00b56",
+  "request_model": "Winnow-12B",
+  "name": "Winnow-12B",
+  "decider": "systemone",
+  "model": "EldanRing/Winnow-12B",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 56.3,
+  "date": "2026-10-25",
+  "server": "winnow-inference scripts/winnow.py serve --model q8 (Q8_0 GGUF, reasoning off, MTP off, vision off)"
+}

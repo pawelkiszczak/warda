@@ -1,0 +1,22 @@
+{
+  "endpoint": "http://127.0.0.1:8001/v1/systemone",
+  "served": {
+    "data": [
+      {
+        "id": "bespokelabs/Bespoke-Nimble-9B-v3"
+      }
+    ]
+  },
+  "revision": "8e927b9b4afdbb14479fac10a7364d1a695be208",
+  "name": "Bespoke-Nimble-9B-v3",
+  "decider": "systemone",
+  "model": "bespokelabs/Bespoke-Nimble-9B-v3",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 110.6,
+  "date": "2026-10-25",
+  "server": "warda.bench.systemone_shim --backend nimble (engine code bespokelabs/bespoke-nimble-9b-v3-decision-index@654b124d3508a7da0d849405744bde80c4bb1a1b, base Qwen/Qwen3.5-9B, bf16)",
+  "server_env": "hopper"
+}

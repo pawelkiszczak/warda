@@ -1,0 +1,32 @@
+{
+  "endpoint": "http://127.0.0.1:8000/v1/systemone",
+  "served": {
+    "models": [
+      {
+        "name": "basal-omni-1.1-max",
+        "release_date": "2026-10-22",
+        "description": "basal typed-decision model (choice / noul / score / act / multi / tool), Polish and English",
+        "mode": "gguf",
+        "early_exit": [],
+        "temperature_per_prim": {
+          "choice": 1.0748733399206964,
+          "noul": 0.9715319411536057,
+          "score": 1.2065045308005216
+        },
+        "prompt_format": 2,
+        "orders": 1
+      }
+    ]
+  },
+  "revision": "a3af675198d38bf640dbabcd964b9e20d6628e19",
+  "name": "basal-omni-1.1-max",
+  "decider": "systemone",
+  "model": "Remek/basal-omni-1.1-max",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 99.2,
+  "date": "2026-10-25",
+  "server": "basal-serve 2.4.1 --mode gguf --model Remek/basal-omni-1.1-max --gguf basal-omni-1.1-max-Q8_0.gguf (converted here with llama.cpp convert_hf_to_gguf (vendored in llama-cpp-python 0.3.36), Q8_0; calibration CALIBRATION.json, the bf16 fit)"
+}

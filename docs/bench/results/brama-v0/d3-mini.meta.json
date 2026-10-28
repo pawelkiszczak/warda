@@ -1,0 +1,22 @@
+{
+  "endpoint": "http://127.0.0.1:8001/v1/systemone",
+  "served": {
+    "data": [
+      {
+        "id": "vllm-sr/d3-mini"
+      }
+    ]
+  },
+  "revision": "bd0090dd758d32ba59ef5c749910a8e87fc4391f",
+  "name": "d3-mini",
+  "decider": "systemone",
+  "model": "vllm-sr/d3-mini",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 78.1,
+  "date": "2026-10-25",
+  "server": "warda.bench.systemone_shim --backend automodel",
+  "server_env": "d3"
+}

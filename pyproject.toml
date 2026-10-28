@@ -81,6 +81,8 @@ ignore = ["E501", "PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR091
 "pretrain/sft/mix_stages.py" = ["T201", "S311", "RUF002"] # CLI output, seeded mixture sampling, and multiplication signs are intentional.
 "pretrain/quality/tests/test_textstats.py" = ["RUF001"] # Mixed-script test fixture intentionally contains a Cyrillic lookalike.
 "pretrain/quality/textstats.py" = ["RUF001"] # Linguistic feature fixtures preserve real Unicode punctuation.
+"warda/bench/brama.py" = ["S311"] # Placeholder identifiers come from seeded non-crypto RNG so the ids sidecar is reproducible.
+"warda/bench/run_brama.py" = ["T201"] # CLI progress and the pilot report tables are intentionally printed.
 "scripts/issues_sync.py" = ["T201", "S603", "S607", "RUF001"] # CLI output; subprocess runs the gh binary from PATH by design; milestone titles use en dashes verbatim.
 
 [tool.mypy]
@@ -95,4 +97,4 @@ explicit_package_bases = true
 [tool.codespell]
 # Polish prompt/stopword vocabulary (tekst, produkt, adres, ...), language codes (vie), the CC "nd" licence tag, the
 # FineWeb-Edu key prefix "fwe", a synthetic person name (Mata), and valid terms codespell doesn't know.
-ignore-words-list = "adres,autor,charakter,disjointness,dokument,fwe,mata,nam,nd,numer,produkt,regon,serwer,te,tekst,unparseable,vie"
+ignore-words-list = "adres,autor,blok,charakter,daty,disjointness,dokument,fwe,grup,mata,nam,nd,nowe,numer,parametr,proces,produkt,regon,serwer,tabel,te,tekst,ue,unparseable,vie"

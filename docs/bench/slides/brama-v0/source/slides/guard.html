@@ -1,0 +1,33 @@
+<section id="guard" data-transition="fade" style="background:#F5F3EE;color:#1B2433;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:56px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4501F">Strażnik</p>
+<h2 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:64px;font-weight:700;line-height:1.1;color:#14213D">Warda wybiera jedną z czterech decyzji</h2>
+<p style="font-size:30px;color:#4A5568">Zanim tekst wyjdzie, Warda decyduje, co z nim zrobić, i mówi, jak bardzo jest pewna.</p>
+</div>
+<div style="display:flex;flex-direction:row;gap:24px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FDFCF9;border:1px solid #E2DED4;border-top:12px solid #2E7D6B;border-radius:16px;padding:36px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#2E7D6B;font-weight:700">allow</p>
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:44px;font-weight:700;color:#14213D">Przepuść</h3>
+<p style="font-size:28px;color:#4A5568">Wyślij bez zmian.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FDFCF9;border:1px solid #E2DED4;border-top:12px solid #A86B0C;border-radius:16px;padding:36px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#A86B0C;font-weight:700">redact</p>
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:44px;font-weight:700;color:#14213D">Zamaskuj</h3>
+<p style="font-size:28px;color:#4A5568">Usuń chronione dane, resztę wyślij.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FDFCF9;border:1px solid #E2DED4;border-top:12px solid #4F5DB0;border-radius:16px;padding:36px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#4F5DB0;font-weight:700">ask_user</p>
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:44px;font-weight:700;color:#14213D">Zapytaj</h3>
+<p style="font-size:28px;color:#4A5568">Wstrzymaj i zapytaj człowieka.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FDFCF9;border:1px solid #E2DED4;border-top:12px solid #B23A26;border-radius:16px;padding:36px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;color:#B23A26;font-weight:700">block</p>
+<h3 style="font-family:'Space Grotesk', Arial, sans-serif;font-size:44px;font-weight:700;color:#14213D">Zablokuj</h3>
+<p style="font-size:28px;color:#4A5568">Nie wysyłaj.</p>
+</div>
+</div>
+<p style="font-size:32px;line-height:1.4;color:#1B2433;width:1500px">Warda nie pisze uzasadnień. Zwraca cztery liczby, np. <b>98 % „zamaskuj”</b>, 1 % „zablokuj”, reszta prawie zero. Próg, od którego Warda działa, ustawia właściciel polityki.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:1200px;font-size:24px;color:#6A7280">Brama v0 · benchmark projektu Warda</p>
+<p style="position:absolute;right:128px;bottom:64px;width:200px;font-size:24px;color:#6A7280;text-align:right">03</p>
+<aside>Zamknięty zestaw czterech decyzji to celowy wybór: łatwo go sprawdzić, policzyć i podpiąć pod automat. Liczby pewności pozwalają ustawić próg, np. blokuj dopiero przy 90 procentach pewności.</aside>
+</section>

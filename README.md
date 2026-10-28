@@ -11,7 +11,7 @@ Status: research and data stage. No trained Warda model yet.
 
 - [`AGENTS.md`](AGENTS.md): the repository contract for agents and humans — run commands, layout, data formats,
   rules, hardware (`CLAUDE.md` links to it).
-- `warda/`: product code — shared vocabulary and records (`schema.py`); `guard`, `service`, `hooks`, `bench`,
+- `warda/`: product code — shared vocabulary and records (`schema.py`); `bench/` (Brama); `guard`, `service`, `hooks`,
   `label` and the CLI arrive in later phases.
 - `pretrain/HARNESS_DECIDER_PLAN.md`: team plan (Polish): goals, gates, teams and sign-up table, schedule, tools.
 - `FINDINGS.md`: results and decisions so far, with links to the detailed documents.
@@ -19,7 +19,11 @@ Status: research and data stage. No trained Warda model yet.
 - `pretrain/`: scratch-model experiments: data pipeline (`data/`), MoE model and pretraining (`model.py`,
   `train.py`), decision fine-tuning (`sft.py`, `sft/`), distillation (`distill/`), text-quality labelling tool
   (`quality/`). Details and results: `pretrain/README.md`.
-- `data/`: committed synthetic datasets (later phases).
+- `data/brama/`: Brama benchmark v0 examples (fictional), example policies and card (`CARD.md`); design in
+  `docs/bench/BRAMA.md`.
+- `warda/bench/`: Brama validator, metrics, pilot runner (`run_brama.py`) and System-1 shim (`systemone_shim.py`);
+  pilot results in `docs/bench/results/brama-v0/`, report in `docs/bench/reports/`, decider list in
+  `docs/bench/brama-v0-models.md`, plain Polish summary in `docs/bench/BRAMA_PROSTO.md`.
 - `docs/performance/APPLE_SILICON.md`: Apple GPU/CPU acceleration policy, exploratory text benchmarks and
   implementation/validation requirements; preprocessing delivery is tracked in P1-12.
 - `CONTRIBUTING.md`: how to work here — task board, branches, PRs and PR templates, keeping docs, issues and the

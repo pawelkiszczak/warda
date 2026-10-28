@@ -1,0 +1,32 @@
+{
+  "endpoint": "http://127.0.0.1:8000/v1/systemone",
+  "served": {
+    "models": [
+      {
+        "name": "basal-omni-1.0-mini",
+        "release_date": "2026-10-22",
+        "description": "basal typed-decision model (choice / noul / score / act / multi / tool), Polish and English",
+        "mode": "eager",
+        "early_exit": [],
+        "temperature_per_prim": {
+          "choice": 1.1387886347566916,
+          "noul": 1.2065045308005216,
+          "score": 1.4142135623730947
+        },
+        "prompt_format": 2,
+        "orders": 1
+      }
+    ]
+  },
+  "revision": "d087a7b9cd2e66aecbb748d0f3ff07f1ea66a5fc",
+  "name": "basal-omni-1.0-mini",
+  "decider": "systemone",
+  "model": "Remek/basal-omni-1.0-mini",
+  "items": 108,
+  "dataset_sha256": "98e4883ac06be7d7ba66111ac931cd1b93af3b1f6c095fa1ea36676ce87b1c68",
+  "states_sha256": "cf566607a6eb92e8bef08fa7da394d7c353d21b13941c2c06296146b278eb643",
+  "hardware": "Linux x86_64, NVIDIA GeForce RTX 3090",
+  "seconds": 87.6,
+  "date": "2026-10-25",
+  "server": "basal-serve 2.4.1 --mode eager"
+}
