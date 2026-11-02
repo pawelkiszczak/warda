@@ -95,4 +95,4 @@ explicit_package_bases = true
 [tool.codespell]
 # Polish prompt/stopword vocabulary (tekst, produkt, adres, ...), language codes (vie), the CC "nd" licence tag, the
 # FineWeb-Edu key prefix "fwe", a synthetic person name (Mata), and valid terms codespell doesn't know.
-ignore-words-list = "adres,autor,charakter,disjointness,dokument,fwe,mata,nam,nd,numer,produkt,regon,serwer,te,tekst,unparseable,vie"
+ignore-words-list = "adres,autor,blok,charakter,daty,disjointness,dokument,fwe,mata,nam,nd,nowe,numer,produkt,regon,serwer,tabel,te,tekst,ue,unparseable,vie"
